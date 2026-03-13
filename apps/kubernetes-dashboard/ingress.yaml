@@ -1,31 +1,32 @@
-# Ingress for Kubernetes Dashboard
-# Exposes dashboard at k8s.bit-habit.com
+# Traefik IngressRoute for Kubernetes Dashboard
+# Handles HTTPS backend communication properly
 
-apiVersion: networking.k8s.io/v1
-kind: Ingress
+---
+# ServersTransport for skipping TLS verification to dashboard
+apiVersion: traefik.io/v1alpha1
+kind: ServersTransport
 metadata:
-  name: kubernetes-dashboard-ingress
+  name: dashboard-transport
   namespace: kubernetes-dashboard
-  annotations:
-    kubernetes.io/ingress.class: traefik
-    traefik.ingress.kubernetes.io/router.entrypoints: websecure
-    traefik.ingress.kubernetes.io/router.tls: "true"
-    cert-manager.io/cluster-issuer: letsencrypt-prod
-    # Dashboard uses HTTPS backend
-    traefik.ingress.kubernetes.io/service.serversscheme: https
 spec:
+  insecureSkipVerify: true
+---
+# IngressRoute for k8s.bit-habit.com
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: kubernetes-dashboard-route
+  namespace: kubernetes-dashboard
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - match: Host(`k8s.bit-habit.com`)
+      kind: Rule
+      services:
+        - name: kubernetes-dashboard
+          port: 443
+          scheme: https
+          serversTransport: dashboard-transport
   tls:
-    - hosts:
-        - k8s.bit-habit.com
-      secretName: k8s-dashboard-tls
-  rules:
-    - host: k8s.bit-habit.com
-      http:
-        paths:
-          - path: /
-            pathType: Prefix
-            backend:
-              service:
-                name: kubernetes-dashboard
-                port:
-                  number: 443
+    secretName: tls-secret
