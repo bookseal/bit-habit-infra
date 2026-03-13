@@ -1,0 +1,31 @@
+# Ingress for Kubernetes Dashboard
+# Exposes dashboard at k8s.bit-habit.com
+
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: kubernetes-dashboard-ingress
+  namespace: kubernetes-dashboard
+  annotations:
+    kubernetes.io/ingress.class: traefik
+    traefik.ingress.kubernetes.io/router.entrypoints: websecure
+    traefik.ingress.kubernetes.io/router.tls: "true"
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    # Dashboard uses HTTPS backend
+    traefik.ingress.kubernetes.io/service.serversscheme: https
+spec:
+  tls:
+    - hosts:
+        - k8s.bit-habit.com
+      secretName: k8s-dashboard-tls
+  rules:
+    - host: k8s.bit-habit.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: kubernetes-dashboard-kong-proxy
+                port:
+                  number: 443

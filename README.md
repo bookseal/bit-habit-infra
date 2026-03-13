@@ -15,6 +15,7 @@ bit-habit-infra/
 │   ├── booktoss/
 │   ├── code-server/
 │   ├── ghost/
+│   ├── kubernetes-dashboard/
 │   ├── startpage/
 │   ├── static-web/
 │   ├── viz-platform/
@@ -47,3 +48,4 @@ kubectl apply -f apps/ --recursive
 | habit.bit-habit.com | static-web + bithabit-api |
 | booktoss.bit-habit.com | booktoss |
 | viz.bit-habit.com | viz-platform |
+| k8s.bit-habit.com | kubernetes-dashboard |
