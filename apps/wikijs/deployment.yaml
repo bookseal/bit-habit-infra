@@ -1,0 +1,105 @@
+# WikiJS PostgreSQL Database
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: wikijs-db
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: wikijs-db
+  template:
+    metadata:
+      labels:
+        app: wikijs-db
+    spec:
+      containers:
+        - name: postgres
+          image: docker.io/library/postgres:17-alpine
+          imagePullPolicy: Never
+          ports:
+            - containerPort: 5432
+          env:
+            - name: POSTGRES_DB
+              value: wiki
+            - name: POSTGRES_USER
+              value: wiki
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: wikijs-db-pass
+                  key: password
+          volumeMounts:
+            - name: db-data
+              mountPath: /var/lib/postgresql/data
+      volumes:
+        - name: db-data
+          hostPath:
+            path: /home/ubuntu/workspace/wikijs-data/db
+            type: DirectoryOrCreate
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: wikijs-db-svc
+  namespace: default
+spec:
+  type: ClusterIP
+  selector:
+    app: wikijs-db
+  ports:
+    - port: 5432
+      targetPort: 5432
+---
+# WikiJS Application
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: wikijs
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: wikijs
+  template:
+    metadata:
+      labels:
+        app: wikijs
+    spec:
+      containers:
+        - name: wiki
+          image: ghcr.io/requarks/wiki:2
+          imagePullPolicy: Never
+          ports:
+            - containerPort: 3000
+          env:
+            - name: DB_TYPE
+              value: postgres
+            - name: DB_HOST
+              value: wikijs-db-svc
+            - name: DB_PORT
+              value: "5432"
+            - name: DB_USER
+              value: wiki
+            - name: DB_PASS
+              valueFrom:
+                secretKeyRef:
+                  name: wikijs-db-pass
+                  key: password
+            - name: DB_NAME
+              value: wiki
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: wikijs-svc
+  namespace: default
+spec:
+  type: ClusterIP
+  selector:
+    app: wikijs
+  ports:
+    - port: 80
+      targetPort: 3000

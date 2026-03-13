@@ -1,0 +1,47 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: bithabit-api
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: bithabit-api
+  template:
+    metadata:
+      labels:
+        app: bithabit-api
+    spec:
+      containers:
+        - name: bithabit-api
+          image: docker.io/library/bithabit-api:latest
+          imagePullPolicy: Never
+          ports:
+            - containerPort: 8000
+          volumeMounts:
+            - name: data
+              mountPath: /app/data
+          env:
+            - name: DB_PATH
+              value: /app/data/bithabit.db
+            - name: UPLOAD_DIR
+              value: /app/data/uploads
+      volumes:
+        - name: data
+          hostPath:
+            path: /home/ubuntu/workspace/bithabit_api/data
+            type: DirectoryOrCreate
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: bithabit-api-svc
+  namespace: default
+spec:
+  type: ClusterIP
+  selector:
+    app: bithabit-api
+  ports:
+    - port: 80
+      targetPort: 8000

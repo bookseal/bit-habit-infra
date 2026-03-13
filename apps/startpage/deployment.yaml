@@ -1,0 +1,45 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: startpage
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: startpage
+  template:
+    metadata:
+      labels:
+        app: startpage
+    spec:
+      containers:
+        - name: startpage
+          image: docker.io/library/startpage:latest
+          imagePullPolicy: Never
+          ports:
+            - containerPort: 8000
+          env:
+            - name: LINKS_FILE
+              value: /app/data/links.json
+          volumeMounts:
+            - name: data
+              mountPath: /app/data
+      volumes:
+        - name: data
+          hostPath:
+            path: /home/ubuntu/workspace/my-start-page/data
+            type: DirectoryOrCreate
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: startpage-svc
+  namespace: default
+spec:
+  type: ClusterIP
+  selector:
+    app: startpage
+  ports:
+    - port: 80
+      targetPort: 8000

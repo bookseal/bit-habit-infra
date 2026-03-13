@@ -1,0 +1,42 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: viz-platform
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: viz-platform
+  template:
+    metadata:
+      labels:
+        app: viz-platform
+    spec:
+      containers:
+        - name: viz-platform
+          image: docker.io/library/viz-bit-habit:latest
+          imagePullPolicy: Never
+          ports:
+            - containerPort: 8501
+          volumeMounts:
+            - name: src
+              mountPath: /app
+      volumes:
+        - name: src
+          hostPath:
+            path: /home/ubuntu/workspace/linear-algebra-visualization
+            type: Directory
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: viz-platform-svc
+  namespace: default
+spec:
+  type: ClusterIP
+  selector:
+    app: viz-platform
+  ports:
+    - port: 80
+      targetPort: 8501

@@ -1,0 +1,14 @@
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: bit-habit-tls
+  namespace: default
+spec:
+  secretName: tls-secret
+  issuerRef:
+    name: letsencrypt-prod
+    kind: ClusterIssuer
+  commonName: "bit-habit.com"
+  dnsNames:
+  - "bit-habit.com"
+  - "*.bit-habit.com"

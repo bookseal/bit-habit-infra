@@ -1,0 +1,37 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: booktoss
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: booktoss
+  template:
+    metadata:
+      labels:
+        app: booktoss
+    spec:
+      containers:
+        - name: booktoss
+          image: docker.io/library/booktoss:latest
+          imagePullPolicy: Never
+          ports:
+            - containerPort: 8000
+          envFrom:
+            - secretRef:
+                name: booktoss-env
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: booktoss-svc
+  namespace: default
+spec:
+  type: ClusterIP
+  selector:
+    app: booktoss
+  ports:
+    - port: 80
+      targetPort: 8000

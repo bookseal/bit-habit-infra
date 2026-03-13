@@ -1,0 +1,128 @@
+# Ghost MySQL Database
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ghost-mysql
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ghost-mysql
+  template:
+    metadata:
+      labels:
+        app: ghost-mysql
+    spec:
+      containers:
+        - name: mysql
+          image: docker.io/library/mysql:8.0
+          imagePullPolicy: Never
+          ports:
+            - containerPort: 3306
+          env:
+            - name: MYSQL_DATABASE
+              value: ghost_prod
+            - name: MYSQL_USER
+              value: ghost
+            - name: MYSQL_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: ghost-mysql-pass
+                  key: password
+            - name: MYSQL_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: ghost-mysql-pass
+                  key: root-password
+          volumeMounts:
+            - name: mysql-data
+              mountPath: /var/lib/mysql
+            - name: init-sql
+              mountPath: /docker-entrypoint-initdb.d
+      volumes:
+        - name: mysql-data
+          hostPath:
+            path: /home/ubuntu/workspace/ghost-data/mysql
+            type: DirectoryOrCreate
+        - name: init-sql
+          hostPath:
+            path: /home/ubuntu/workspace/ghost-data/initdb
+            type: DirectoryOrCreate
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ghost-mysql-svc
+  namespace: default
+spec:
+  type: ClusterIP
+  selector:
+    app: ghost-mysql
+  ports:
+    - port: 3306
+      targetPort: 3306
+---
+# Ghost CMS Application
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ghost
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ghost
+  template:
+    metadata:
+      labels:
+        app: ghost
+    spec:
+      containers:
+        - name: ghost
+          image: docker.io/library/ghost:5-alpine
+          imagePullPolicy: Never
+          ports:
+            - containerPort: 2368
+          env:
+            - name: url
+              value: https://blog.bit-habit.com
+            - name: database__client
+              value: mysql
+            - name: database__connection__host
+              value: ghost-mysql-svc
+            - name: database__connection__port
+              value: "3306"
+            - name: database__connection__user
+              value: ghost
+            - name: database__connection__password
+              valueFrom:
+                secretKeyRef:
+                  name: ghost-mysql-pass
+                  key: password
+            - name: database__connection__database
+              value: ghost_prod
+            - name: NODE_ENV
+              value: production
+          volumeMounts:
+            - name: content
+              mountPath: /var/lib/ghost/content
+      volumes:
+        - name: content
+          hostPath:
+            path: /home/ubuntu/workspace/ghost-data/content
+            type: Directory
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ghost-svc
+  namespace: default
+spec:
+  type: ClusterIP
+  selector:
+    app: ghost
+  ports:
+    - port: 80
+      targetPort: 2368

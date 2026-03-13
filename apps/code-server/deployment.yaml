@@ -1,0 +1,51 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: code-server
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: code-server
+  template:
+    metadata:
+      labels:
+        app: code-server
+    spec:
+      containers:
+        - name: code-server
+          image: docker.io/codercom/code-server:latest
+          imagePullPolicy: Never
+          ports:
+            - containerPort: 8080
+          env:
+            - name: PASSWORD
+              value: "!Qudrnco20500"
+          volumeMounts:
+            - name: workspace
+              mountPath: /home/coder/workspace
+            - name: config
+              mountPath: /home/coder/.config
+      volumes:
+        - name: workspace
+          hostPath:
+            path: /home/ubuntu/workspace
+            type: Directory
+        - name: config
+          hostPath:
+            path: /home/ubuntu/.config/code-server-k8s
+            type: DirectoryOrCreate
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: code-server-svc
+  namespace: default
+spec:
+  type: ClusterIP
+  selector:
+    app: code-server
+  ports:
+    - port: 80
+      targetPort: 8080

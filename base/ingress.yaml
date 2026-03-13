@@ -1,0 +1,185 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: main-ingress
+  namespace: default
+  annotations:
+    kubernetes.io/ingress.class: traefik
+    traefik.ingress.kubernetes.io/router.entrypoints: websecure
+    traefik.ingress.kubernetes.io/router.tls: "true"
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+spec:
+  tls:
+  - hosts:
+    - bit-habit.com
+    - "*.bit-habit.com"
+    secretName: tls-secret
+  rules:
+  - host: bit-habit.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: static-web-svc
+            port:
+              number: 80
+  - host: www.bit-habit.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: static-web-svc
+            port:
+              number: 80
+  - host: blog.bit-habit.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: ghost-svc
+            port:
+              number: 80
+  - host: www.blog.bit-habit.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: ghost-svc
+            port:
+              number: 80
+  - host: booktoss.bit-habit.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: booktoss-svc
+            port:
+              number: 80
+  - host: code-server.bit-habit.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: code-server-svc
+            port:
+              number: 80
+  - host: daily-seongsu.bit-habit.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: daily-seongsu-svc
+            port:
+              number: 80
+  - host: habit.bit-habit.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: static-web-svc
+            port:
+              number: 80
+  - host: startpage.bit-habit.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: startpage-svc
+            port:
+              number: 80
+  - host: status.bit-habit.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: static-web-svc
+            port:
+              number: 80
+  - host: seoul-apt.bit-habit.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: seoul-apt-price
+            port:
+              number: 80
+  - host: viz.bit-habit.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: viz-platform-svc
+            port:
+              number: 80
+  - host: wiki.bit-habit.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: wikijs-svc
+            port:
+              number: 80
+  - host: www.wiki.bit-habit.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: wikijs-svc
+            port:
+              number: 80
+---
+# habit.bit-habit.com/api/ 전용 Ingress (strip-api middleware 적용)
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: habit-api-ingress
+  namespace: default
+  annotations:
+    kubernetes.io/ingress.class: traefik
+    traefik.ingress.kubernetes.io/router.entrypoints: websecure
+    traefik.ingress.kubernetes.io/router.tls: "true"
+    traefik.ingress.kubernetes.io/router.middlewares: default-strip-api-prefix@kubernetescrd
+spec:
+  tls:
+  - hosts:
+    - habit.bit-habit.com
+    secretName: tls-secret
+  rules:
+  - host: habit.bit-habit.com
+    http:
+      paths:
+      - path: /api/
+        pathType: Prefix
+        backend:
+          service:
+            name: bithabit-api-svc
+            port:
+              number: 80
