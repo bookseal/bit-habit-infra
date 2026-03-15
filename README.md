@@ -1,3 +1,4 @@
+https://k8s.bit-habit.com
 # bit-habit-infra
 
 Kubernetes manifests for bit-habit.com infrastructure.
