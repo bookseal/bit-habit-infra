@@ -1,4 +1,4 @@
-# OAuth2 Proxy for Kubernetes Dashboard
+# OAuth2 Proxy for Headlamp
 
 GitHub SSO authentication for `k8s.bit-habit.com`
 
@@ -59,11 +59,10 @@ You can override the namespace with `NAMESPACE=... ./update-secret.sh`.
 1. Go to https://k8s.bit-habit.com
 2. Click "Sign in with GitHub"
 3. Authorize the app
-4. Dashboard loads automatically (no token needed)
+4. Headlamp loads automatically
 
-This setup injects the `dashboard-admin` service account token behind the
-GitHub login layer. Any GitHub-authenticated user allowed by oauth2-proxy
-gets cluster-admin level access in the dashboard.
+This setup protects the public Headlamp URL with GitHub login.
+Headlamp itself uses the in-cluster `headlamp-admin` service account.
 
 ## Allowed Users
 

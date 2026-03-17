@@ -1,34 +1,24 @@
-# Kubernetes Dashboard
+# Kubernetes Dashboard (Legacy)
 
-Web UI for k3s cluster at `k8s.bit-habit.com`
+Legacy web UI reference for k3s cluster.
 
-If you use `apps/oauth2-proxy/`, keep the direct dashboard ingress disabled.
-Running both ingress routes for the same host causes ambiguous Traefik
-routing for `k8s.bit-habit.com`.
+`k8s.bit-habit.com` now uses Headlamp.
+Keep this directory only as a fallback reference.
 
-## Installation
+## What This Directory Still Contains
+
+- `deployment.yaml`: admin service account and token secret for legacy dashboard access
+- `ingress-direct.yaml.disabled`: disabled direct Traefik route for the old dashboard
+
+## Legacy Access
+
+If you want to bring the old dashboard back for debugging:
 
 ```bash
-# 1. Install official Kubernetes Dashboard (Helm)
-helm repo add kubernetes-dashboard https://kubernetes.github.io/dashboard/
-helm upgrade --install kubernetes-dashboard kubernetes-dashboard/kubernetes-dashboard \
-  --create-namespace \
-  --namespace kubernetes-dashboard
-
-# 2. Apply ServiceAccount and Ingress
-kubectl apply -f deployment.yaml
-kubectl apply -f auth-proxy.yaml
-kubectl apply -f ingress.yaml
-
-# 3. Get login token
 kubectl get secret dashboard-admin-token -n kubernetes-dashboard -o jsonpath="{.data.token}" | base64 -d
 ```
 
-## Access
-
-- **URL**: https://k8s.bit-habit.com
-- **Login**: Direct access when used with `apps/oauth2-proxy/`
-- **Fallback**: Use token from step 3 for direct dashboard access
+Use that token in the legacy dashboard after enabling its direct route again.
 
 ## DNS
 

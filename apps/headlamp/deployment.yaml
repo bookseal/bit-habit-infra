@@ -1,0 +1,119 @@
+# Headlamp in-cluster deployment for k3s administration.
+# Exposed externally through apps/oauth2-proxy/.
+
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: headlamp
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: headlamp-admin
+  namespace: headlamp
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: headlamp-admin
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-admin
+subjects:
+  - kind: ServiceAccount
+    name: headlamp-admin
+    namespace: headlamp
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: headlamp
+  namespace: headlamp
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: headlamp
+  template:
+    metadata:
+      labels:
+        app: headlamp
+    spec:
+      serviceAccountName: headlamp-admin
+      initContainers:
+        - name: write-kubeconfig
+          image: alpine:3.20
+          command:
+            - /bin/sh
+            - -c
+            - |
+              mkdir -p /config
+              cat <<EOF >/config/config
+              apiVersion: v1
+              kind: Config
+              clusters:
+                - name: main
+                  cluster:
+                    certificate-authority: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+                    server: https://${KUBERNETES_SERVICE_HOST}:${KUBERNETES_SERVICE_PORT_HTTPS}
+              contexts:
+                - name: main
+                  context:
+                    cluster: main
+                    user: main
+              current-context: main
+              users:
+                - name: main
+                  user:
+                    tokenFile: /var/run/secrets/kubernetes.io/serviceaccount/token
+              EOF
+          volumeMounts:
+            - name: headlamp-config
+              mountPath: /config
+      containers:
+        - name: headlamp
+          image: ghcr.io/headlamp-k8s/headlamp:v0.40.1
+          args:
+            - -plugins-dir=/headlamp/plugins
+            - -kubeconfig=/home/headlamp/.config/Headlamp/kubeconfigs/config
+          ports:
+            - containerPort: 4466
+              name: http
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 4466
+            initialDelaySeconds: 10
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 4466
+            initialDelaySeconds: 20
+            periodSeconds: 10
+          resources:
+            limits:
+              memory: "256Mi"
+              cpu: "250m"
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+          volumeMounts:
+            - name: headlamp-config
+              mountPath: /home/headlamp/.config/Headlamp/kubeconfigs
+      volumes:
+        - name: headlamp-config
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: headlamp
+  namespace: headlamp
+spec:
+  selector:
+    app: headlamp
+  ports:
+    - port: 80
+      targetPort: 4466

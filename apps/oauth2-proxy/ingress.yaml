@@ -1,4 +1,4 @@
-# Traefik IngressRoute for OAuth2 Proxy + Kubernetes Dashboard
+# Traefik IngressRoute for OAuth2 Proxy + Headlamp
 # GitHub SSO authentication for k8s.bit-habit.com
 
 ---
