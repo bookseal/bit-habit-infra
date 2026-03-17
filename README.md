@@ -38,6 +38,13 @@ kubectl apply -f apps/startpage/
 kubectl apply -f apps/ --recursive
 ```
 
+Note: some app manifests are mutually exclusive. In particular, the
+Kubernetes Dashboard direct ingress is kept disabled when GitHub OAuth is
+used for `k8s.bit-habit.com`.
+
+OAuth secrets are also excluded from committed `.yaml` manifests on purpose.
+Create `oauth2-proxy-secret` separately before applying `apps/oauth2-proxy/`.
+
 ## Domains
 
 | Domain | Service |

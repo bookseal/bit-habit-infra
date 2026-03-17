@@ -2,6 +2,10 @@
 
 Web UI for k3s cluster at `k8s.bit-habit.com`
 
+If you use `apps/oauth2-proxy/`, keep the direct dashboard ingress disabled.
+Running both ingress routes for the same host causes ambiguous Traefik
+routing for `k8s.bit-habit.com`.
+
 ## Installation
 
 ```bash
@@ -13,6 +17,7 @@ helm upgrade --install kubernetes-dashboard kubernetes-dashboard/kubernetes-dash
 
 # 2. Apply ServiceAccount and Ingress
 kubectl apply -f deployment.yaml
+kubectl apply -f auth-proxy.yaml
 kubectl apply -f ingress.yaml
 
 # 3. Get login token
@@ -22,7 +27,8 @@ kubectl get secret dashboard-admin-token -n kubernetes-dashboard -o jsonpath="{.
 ## Access
 
 - **URL**: https://k8s.bit-habit.com
-- **Login**: Use token from step 3
+- **Login**: Direct access when used with `apps/oauth2-proxy/`
+- **Fallback**: Use token from step 3 for direct dashboard access
 
 ## DNS
 

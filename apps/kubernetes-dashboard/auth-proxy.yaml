@@ -1,0 +1,108 @@
+# Internal proxy that injects the dashboard admin token so authenticated
+# users can reach Kubernetes Dashboard without a second login step.
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: dashboard-auth-proxy-config
+  namespace: kubernetes-dashboard
+data:
+  nginx.conf.template: |
+    events {}
+    http {
+      server {
+        listen 8080;
+        server_name _;
+
+        location / {
+          proxy_pass https://kubernetes-dashboard.kubernetes-dashboard.svc.cluster.local;
+          proxy_ssl_server_name on;
+          proxy_ssl_verify off;
+          proxy_http_version 1.1;
+
+          proxy_set_header Host $host;
+          proxy_set_header X-Real-IP $remote_addr;
+          proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+          proxy_set_header X-Forwarded-Proto https;
+          proxy_set_header Accept-Language "en-US,en;q=0.9";
+          proxy_set_header Authorization "Bearer __DASHBOARD_TOKEN__";
+
+          add_header Content-Language en always;
+        }
+      }
+    }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dashboard-auth-proxy
+  namespace: kubernetes-dashboard
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: dashboard-auth-proxy
+  template:
+    metadata:
+      labels:
+        app: dashboard-auth-proxy
+    spec:
+      containers:
+        - name: nginx
+          image: nginx:1.27-alpine
+          command:
+            - /bin/sh
+            - -c
+            - |
+              TOKEN="$(cat /var/run/secrets/dashboard-admin/token)"
+              sed "s|__DASHBOARD_TOKEN__|$TOKEN|g" \
+                /etc/nginx/templates/nginx.conf.template > /etc/nginx/nginx.conf
+              exec nginx -g 'daemon off;'
+          ports:
+            - containerPort: 8080
+              name: http
+          readinessProbe:
+            httpGet:
+              path: /api/v1/login/status
+              port: 8080
+            initialDelaySeconds: 3
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          resources:
+            limits:
+              memory: "64Mi"
+              cpu: "100m"
+            requests:
+              memory: "32Mi"
+              cpu: "25m"
+          volumeMounts:
+            - name: config
+              mountPath: /etc/nginx/templates
+              readOnly: true
+            - name: dashboard-admin-token
+              mountPath: /var/run/secrets/dashboard-admin
+              readOnly: true
+      volumes:
+        - name: config
+          configMap:
+            name: dashboard-auth-proxy-config
+        - name: dashboard-admin-token
+          secret:
+            secretName: dashboard-admin-token
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: dashboard-auth-proxy
+  namespace: kubernetes-dashboard
+spec:
+  selector:
+    app: dashboard-auth-proxy
+  ports:
+    - port: 8080
+      targetPort: 8080

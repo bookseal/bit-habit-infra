@@ -1,5 +1,9 @@
 # Traefik IngressRoute for Kubernetes Dashboard
 # Handles HTTPS backend communication properly
+#
+# This manifest is disabled by default because apps/oauth2-proxy/ owns the
+# same host when GitHub SSO is enabled. Rename back to *.yaml only when you
+# want direct dashboard access without oauth2-proxy.
 
 ---
 # ServersTransport for skipping TLS verification to dashboard
