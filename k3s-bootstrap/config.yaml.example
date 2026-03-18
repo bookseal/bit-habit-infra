@@ -1,0 +1,16 @@
+# Example k3s server configuration.
+# Copy to /etc/rancher/k3s/config.yaml on the server and adjust for the real environment.
+
+write-kubeconfig-mode: "0644"
+
+# Disable components only when you really intend to replace them.
+disable:
+  - servicelb
+
+# Extra names added to the API server certificate.
+tls-san:
+  - k8s.bit-habit.com
+
+# A stable label that can be useful later for scheduling or documentation.
+node-label:
+  - "bit-habit.com/role=main"

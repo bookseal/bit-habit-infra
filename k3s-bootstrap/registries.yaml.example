@@ -1,0 +1,14 @@
+# Example registry configuration for k3s.
+# Copy to /etc/rancher/k3s/registries.yaml only if you need custom mirrors or auth.
+
+mirrors:
+  docker.io:
+    endpoint:
+      - "https://registry-1.docker.io"
+
+# Example private registry auth:
+# configs:
+#   registry.example.com:
+#     auth:
+#       username: your-username
+#       password: your-password

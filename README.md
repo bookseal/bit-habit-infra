@@ -1,40 +1,56 @@
 # bit-habit-infra
 
-Kubernetes manifests for the `bit-habit.com` k3s cluster.
+This repository now documents the full picture in **two layers**:
 
-This repo manages:
+1. `k3s-bootstrap/`
+   The server-side bootstrap layer for k3s itself
+2. `base/` and `apps/`
+   The cluster workload layer for ingress, certificates, apps, and admin UI
 
-- `Route53` DNS and DNS-01 validation
-- `cert-manager` TLS issuance
-- `Traefik` ingress routing
-- public application workloads
-- the admin entrypoint for `k8s.bit-habit.com` using `Headlamp` and `oauth2-proxy`
+That split is the easiest way to understand how this cluster is actually managed.
 
-## 1. Beginner-First Deployment Order
+## 1. Start Here: Two Layers, Two Responsibilities
 
-If you only need the shortest path to understanding or applying this repo, start here.
+If you are confused about "where k3s ends" and "where app manifests begin", this is the boundary:
 
 ```mermaid
 flowchart TD
-    A[1. Ensure k3s, Traefik, and cert-manager are ready]
-    B[2. Apply base/cert-manager]
-    C[3. Apply base/middlewares and base/ingress]
-    D[4. Apply public apps from apps/]
-    E[5. Apply apps/headlamp/deployment.yaml]
-    F[6. Create oauth2-proxy-secret in the headlamp namespace]
-    G[7. Apply apps/oauth2-proxy]
-    H[8. Open domains and verify]
+    Server[Server / OS]
+    Bootstrap[k3s-bootstrap/]
+    K3s[k3s control plane and node services]
+    System[Traefik, kube-system, cert-manager]
+    Workloads[base/ and apps/]
+    Public[Public domains and admin UI]
 
-    A --> B --> C --> D --> E --> F --> G --> H
+    Server --> Bootstrap --> K3s --> System --> Workloads --> Public
 ```
 
-Prerequisites:
+Read it like this:
 
-- a working `k3s` cluster with `Traefik`
-- `cert-manager` installed and running
-- required external resources such as `basic-auth`, `nginx-conf`, `booktoss-env`, `ghost-mysql-pass`, `wikijs-db-pass`
+- `k3s-bootstrap/` is for how the cluster itself is installed and configured.
+- `base/` and `apps/` are for what runs inside that cluster.
+- This repo now keeps both ideas visible, but they are still different layers.
 
-Typical commands:
+## 2. Beginner-First Reading and Deployment Order
+
+If you only want the shortest path to understanding this repo, read and apply in this order:
+
+```mermaid
+flowchart TD
+    A[1. Read k3s-bootstrap/README.md]
+    B[2. Understand k3s-bootstrap/config.yaml.example]
+    C[3. Apply base/cert-manager]
+    D[4. Apply base/middlewares and base/ingress]
+    E[5. Apply public apps from apps/]
+    F[6. Apply apps/headlamp/deployment.yaml]
+    G[7. Create oauth2-proxy-secret in headlamp]
+    H[8. Apply apps/oauth2-proxy]
+    I[9. Open domains and verify]
+
+    A --> B --> C --> D --> E --> F --> G --> H --> I
+```
+
+Typical workload commands:
 
 ```bash
 kubectl apply -f base/cert-manager/
@@ -60,33 +76,158 @@ kubectl apply -f apps/oauth2-proxy/deployment.yaml
 kubectl apply -f apps/oauth2-proxy/ingress.yaml
 ```
 
-## 2. Public Admin Entry Screen
+## 3. What `k3s-bootstrap/` Means
+
+`k3s-bootstrap/` is the place for the part that was previously missing from this repo:
+
+- how the k3s server is installed
+- how `/etc/rancher/k3s/config.yaml` is managed
+- how `/etc/rancher/k3s/registries.yaml` is managed
+- how operators think about the generated kubeconfig at `/etc/rancher/k3s/k3s.yaml`
+
+This directory is **not** auto-applied by Kubernetes. It is a documentation and template layer for the server itself.
+
+```mermaid
+flowchart LR
+    Repo[k3s-bootstrap/*]
+    Host[/Server filesystem/]
+    Config[/etc/rancher/k3s/config.yaml]
+    Registries[/etc/rancher/k3s/registries.yaml]
+    Kubeconfig[/etc/rancher/k3s/k3s.yaml]
+    Service[systemd k3s service]
+
+    Repo --> Host
+    Host --> Config
+    Host --> Registries
+    Service --> Kubeconfig
+```
+
+## 4. Public Admin Entry Screen
 
 This is the public landing screen currently shown at `https://k8s.bit-habit.com` before GitHub authentication. The screenshot was captured on **March 18, 2026 (UTC)**.
 
 ![Public login screen for k8s.bit-habit.com](assets/k8s-bit-habit-com-login.png)
 
-What this means operationally:
+Operational meaning:
 
 - the public URL is fronted by `oauth2-proxy`
-- unauthenticated users see the GitHub sign-in page first
+- unauthenticated users see GitHub sign-in first
 - `Headlamp` only appears after successful GitHub OAuth
 
-## 3. This Repo in One Sentence
+## 5. The One-Sentence Model
 
-This repo runs `bit-habit.com` workloads through the flow `Route53 -> k3s -> Traefik -> Ingress -> Service -> Pod`, while `cert-manager` issues the wildcard TLS certificate and `Headlamp` provides the cluster admin UI behind GitHub OAuth.
+This repo manages the cluster in two stages:
 
-## 4. Understand the Public Traffic Flow First
+- `k3s-bootstrap/` explains how the k3s host is configured
+- `base/` and `apps/` run `Route53 -> Traefik -> Ingress -> Service -> Pod` workloads inside that cluster
 
-Start with public traffic before looking at the admin UI.
+## 6. Three Files You Should Read First
+
+If you are new, these are the three files I would read first.
+
+### 6.1 [`k3s-bootstrap/config.yaml.example`](k3s-bootstrap/config.yaml.example)
+
+Why this file matters:
+
+- it tells you how the k3s server itself is started
+- it is the line between "server setup" and "Kubernetes manifests"
+- if this part is wrong, everything above it becomes confusing
+
+Example content:
+
+```yaml
+write-kubeconfig-mode: "0644"
+disable:
+  - servicelb
+tls-san:
+  - k8s.bit-habit.com
+node-label:
+  - "bit-habit.com/role=main"
+```
+
+Beginner explanation:
+
+- `write-kubeconfig-mode` controls who can read the generated kubeconfig.
+- `disable` turns off bundled components you do not want. Here it disables `servicelb`.
+- `tls-san` adds extra names to the API server certificate.
+- `node-label` gives the node a stable identity you can later target from Kubernetes.
+
+### 6.2 [`base/ingress.yaml`](base/ingress.yaml)
+
+Why this file matters:
+
+- this is the public front door for most domains
+- it explains how traffic becomes a Service call
+- if you want to know "what host points to what app", this is the first workload file to inspect
+
+Example content:
+
+```yaml
+metadata:
+  name: main-ingress
+  namespace: default
+  annotations:
+    kubernetes.io/ingress.class: traefik
+    traefik.ingress.kubernetes.io/router.entrypoints: websecure
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+spec:
+  tls:
+  - hosts:
+    - bit-habit.com
+    - "*.bit-habit.com"
+    secretName: tls-secret
+```
+
+Beginner explanation:
+
+- this says Traefik should handle the ingress
+- it enables HTTPS entry through `websecure`
+- it asks cert-manager to use `letsencrypt-prod`
+- it declares that `tls-secret` should terminate TLS for the root domain and wildcard subdomains
+
+### 6.3 [`apps/headlamp/deployment.yaml`](apps/headlamp/deployment.yaml)
+
+Why this file matters:
+
+- it shows how the admin UI lives inside the cluster
+- it shows the `ServiceAccount` and `ClusterRoleBinding` relationship
+- it makes the difference between GitHub login and Kubernetes permissions very concrete
+
+Example content:
+
+```yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: headlamp-admin
+  namespace: headlamp
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: headlamp-admin
+roleRef:
+  kind: ClusterRole
+  name: cluster-admin
+```
+
+Beginner explanation:
+
+- GitHub login controls who reaches the UI.
+- This file controls what the UI can do after login.
+- Here, `headlamp-admin` is bound to `cluster-admin`, so the UI has very broad access.
+
+## 7. Public Traffic Flow
+
+Read public traffic before you read the admin UI.
 
 ```mermaid
 flowchart LR
     User[Browser]
     R53[Route53 DNS]
-    Node[k3s Node Public IP]
-    Traefik[Traefik Ingress Controller]
-    Ingress[Ingress Rules]
+    Node[k3s node public IP]
+    Traefik[Traefik ingress controller]
+    Ingress[Ingress rules]
     Service[ClusterIP Service]
     Pod[Deployment / Pod]
     Data[hostPath or in-cluster DB]
@@ -106,145 +247,83 @@ flowchart LR
 
 Four things to remember:
 
-1. `Route53` resolves the domain and also participates in `DNS-01` validation.
-2. `Traefik` is the public ingress controller at the edge of the cluster.
-3. `Ingress` maps hostnames and paths to internal `Service` objects.
-4. `Service` sends traffic to the actual application `Pod` objects.
+1. `Route53` resolves domains and participates in DNS-01 validation.
+2. `Traefik` is the public ingress controller.
+3. `Ingress` maps hostnames and paths to `Service` objects.
+4. `Service` sends traffic to the actual application Pods.
 
-## 5. The Fastest Way to Read This Repo
+## 8. File Inventory by Layer
 
-1. Read section 1 first.
-2. Read the `base/` files as the "front door" of the cluster.
-3. Pick one app under `apps/` and trace `Deployment -> Service -> Ingress`.
-4. Read the admin UI sections last.
+### 8.1 `k3s-bootstrap/`
 
-## 6. Kubernetes Objects Used Here
-
-| Object | Meaning | What it does in this repo |
+| File | Purpose | Beginner note |
 | --- | --- | --- |
-| `Deployment` | Keeps Pods running | Runs apps, databases, Headlamp, and oauth2-proxy |
-| `Service` | Stable internal network name for Pods | Gives Ingress a target to forward traffic to |
-| `Ingress` | Public HTTP/HTTPS route | Connects domains to internal Services |
-| `IngressRoute` | Traefik-specific routing CRD | Exposes `k8s.bit-habit.com` through oauth2-proxy |
-| `Secret` | Sensitive value storage | Stores Route53 credentials, OAuth values, DB passwords |
-| `ConfigMap` | Non-secret configuration | Stores nginx configuration |
-| `ServiceAccount` | Kubernetes identity for a Pod | Lets Headlamp talk to the Kubernetes API |
-| `ClusterRoleBinding` | Permission grant | Gives Headlamp cluster-wide access |
-| `Certificate` | cert-manager certificate request | Requests the wildcard TLS certificate |
-| `ClusterIssuer` | Certificate issuance policy | Tells cert-manager to use Let's Encrypt and Route53 |
+| `k3s-bootstrap/README.md` | Explains what belongs to the k3s server layer | Start here if you want the "whole picture" |
+| `k3s-bootstrap/config.yaml.example` | Example k3s server config | Maps to `/etc/rancher/k3s/config.yaml` |
+| `k3s-bootstrap/registries.yaml.example` | Example private registry / mirror config | Maps to `/etc/rancher/k3s/registries.yaml` |
+| `k3s-bootstrap/install-server.sh.example` | Example installation command for the first server | Shows how bootstrap and config tie together |
 
-## 7. Operational Characteristics
-
-- This repo uses plain YAML. There is no `Helm`, `Terraform`, `Kustomize`, or CI pipeline here.
-- Several apps depend on `hostPath`, so they are tied to the node filesystem layout.
-- Several app images use `imagePullPolicy: Never`, so images must already exist on the node.
-- Not every dependency lives in this repo. Some `Secret` and `ConfigMap` objects must already exist.
-
-## 8. `base/` File Inventory
+### 8.2 `base/`
 
 `base/` is the cluster front door: certificates, shared ingress, and shared Traefik middleware.
 
-| File | What it defines | Where it acts in the flow | Beginner note |
-| --- | --- | --- | --- |
-| `base/cert-manager/cluster-issuer.yaml` | The production `ClusterIssuer` using Let’s Encrypt and the `Route53` DNS-01 solver | DNS and TLS issuance | This defines how certificates are issued. |
-| `base/cert-manager/aws-secret.yaml` | `route53-credentials-secret` | DNS and TLS issuance | cert-manager uses this to create Route53 DNS challenge records. |
-| `base/cert-manager/certificate.yaml` | Wildcard certificate request for `bit-habit.com` and `*.bit-habit.com` | DNS and TLS issuance | The result becomes `tls-secret`. |
-| `base/ingress.yaml` | The main public `Ingress` plus a dedicated `/api/` `Ingress` for `habit.bit-habit.com` | Public routing | Most domain-to-service mapping starts here. |
-| `base/middlewares/strip-api-middleware.yaml` | Traefik `Middleware` that strips `/api` | API path normalization | This makes `/api/...` requests match what the backend expects. |
+| File | What it defines | Beginner note |
+| --- | --- | --- |
+| `base/cert-manager/cluster-issuer.yaml` | Production `ClusterIssuer` using Let’s Encrypt and `Route53` DNS-01 | Defines how certificates are issued |
+| `base/cert-manager/aws-secret.yaml` | `route53-credentials-secret` | Gives cert-manager access to Route53 |
+| `base/cert-manager/certificate.yaml` | Wildcard certificate request for `bit-habit.com` and `*.bit-habit.com` | Produces `tls-secret` |
+| `base/ingress.yaml` | Main public ingress plus `/api/` ingress for `habit.bit-habit.com` | Most domain routing starts here |
+| `base/middlewares/strip-api-middleware.yaml` | Traefik `Middleware` that strips `/api` | Makes API paths line up with backend expectations |
 
-## 9. `apps/` File Inventory
+### 8.3 `apps/`
 
 `apps/` holds the actual workloads, admin components, and operator helper files.
 
-### 9.1 Public application files
+| File | What it defines | Beginner note |
+| --- | --- | --- |
+| `apps/static-web/deployment.yaml` | `static-web` Deployment and Service | Serves `bit-habit.com`, `habit.bit-habit.com`, and `status.bit-habit.com` |
+| `apps/startpage/deployment.yaml` | `startpage` Deployment and Service | Serves `startpage.bit-habit.com` |
+| `apps/booktoss/deployment.yaml` | `booktoss` Deployment and Service | Depends on `booktoss-env` |
+| `apps/code-server/deployment.yaml` | `code-server` Deployment and Service | Browser-based development environment |
+| `apps/viz-platform/deployment.yaml` | `viz-platform` Deployment and Service | Source tree mounted from the node |
+| `apps/bithabit-api/deployment.yaml` | `bithabit-api` Deployment and Service | API running inside the cluster |
+| `apps/bithabit-api/service.yaml` | `bithabit-api-svc` Service and manual `Endpoints` | Alternative API mode forwarding to `10.0.0.61:8002` |
+| `apps/ghost/deployment.yaml` | `ghost-mysql` and `ghost` Deployments plus Services | Blog plus MySQL |
+| `apps/wikijs/deployment.yaml` | `wikijs-db` and `wikijs` Deployments plus Services | Wiki.js plus PostgreSQL |
+| `apps/headlamp/README.md` | Headlamp notes | Headlamp-specific operator guidance |
+| `apps/headlamp/deployment.yaml` | Headlamp namespace, RBAC, Deployment, and Service | Admin UI runtime |
+| `apps/oauth2-proxy/README.md` | oauth2-proxy notes | GitHub OAuth setup and troubleshooting |
+| `apps/oauth2-proxy/deployment.yaml` | oauth2-proxy Deployment and Service | Admin authentication layer |
+| `apps/oauth2-proxy/ingress.yaml` | Traefik `IngressRoute` for `k8s.bit-habit.com` | Public admin entrypoint |
+| `apps/oauth2-proxy/secret.example.yaml.disabled` | Example Secret template | Helper template only |
+| `apps/oauth2-proxy/update-secret.sh` | Secret rotation helper | Updates the GitHub OAuth Secret and restarts oauth2-proxy |
 
-| File | What it defines | Where it acts in the flow | Beginner note |
-| --- | --- | --- | --- |
-| `apps/static-web/deployment.yaml` | `static-web` Deployment and Service | Public web runtime | Serves `bit-habit.com`, `habit.bit-habit.com`, and `status.bit-habit.com` content. Uses multiple `hostPath` mounts plus `ConfigMap` and `Secret` inputs. |
-| `apps/startpage/deployment.yaml` | `startpage` Deployment and Service | Public web runtime | Serves `startpage.bit-habit.com`. |
-| `apps/booktoss/deployment.yaml` | `booktoss` Deployment and Service | Public web runtime | Depends on the `booktoss-env` Secret. |
-| `apps/code-server/deployment.yaml` | `code-server` Deployment and Service | Public web runtime | Exposes a browser-based coding environment and mounts the node workspace with `hostPath`. |
-| `apps/viz-platform/deployment.yaml` | `viz-platform` Deployment and Service | Public web runtime | Mounts the source tree directly from the node with `hostPath`. |
-| `apps/bithabit-api/deployment.yaml` | `bithabit-api` Deployment and Service | Public API runtime | Runs the API inside the cluster. |
-| `apps/bithabit-api/service.yaml` | `bithabit-api-svc` Service and manual `Endpoints` | External API backend mode | This is an alternative mode that forwards to `10.0.0.61:8002`. Do not apply it together with the in-cluster Service unless that is intentional. |
-| `apps/ghost/deployment.yaml` | `ghost-mysql` and `ghost` Deployments plus Services | Public web and internal database | Runs the blog and its MySQL database with `hostPath` data. |
-| `apps/wikijs/deployment.yaml` | `wikijs-db` and `wikijs` Deployments plus Services | Public web and internal database | Runs Wiki.js and PostgreSQL. |
+### 8.4 `assets/`
 
-### 9.2 Admin and operator files
+| File | Purpose | Beginner note |
+| --- | --- | --- |
+| `assets/k8s-bit-habit-com-login.png` | Public screenshot of the admin entry page | Shows what users see before GitHub authentication |
 
-| File | What it defines | Where it acts in the flow | Beginner note |
-| --- | --- | --- | --- |
-| `apps/headlamp/README.md` | Headlamp-specific operational notes | Operator docs | Explains the in-cluster Headlamp setup. |
-| `apps/headlamp/deployment.yaml` | The `headlamp` namespace, ServiceAccount, ClusterRoleBinding, Deployment, and Service | Admin UI runtime | This is the actual Headlamp deployment. |
-| `apps/oauth2-proxy/README.md` | oauth2-proxy setup notes | Operator docs | Explains GitHub OAuth setup and troubleshooting. |
-| `apps/oauth2-proxy/deployment.yaml` | oauth2-proxy Deployment and Service | Admin authentication layer | Handles GitHub login before traffic reaches Headlamp. |
-| `apps/oauth2-proxy/ingress.yaml` | Traefik `IngressRoute` for `k8s.bit-habit.com` | Admin public entrypoint | This is the public route for the admin UI. |
-| `apps/oauth2-proxy/secret.example.yaml.disabled` | Example Secret template | Operator helper template | Sample values only. It should stay disabled. |
-| `apps/oauth2-proxy/update-secret.sh` | Secret rotation helper script | Operator helper | Updates the GitHub OAuth Secret and restarts oauth2-proxy. |
+## 9. Where the Layers Meet
 
-## 10. Where Each File Fits in the Infrastructure Flow
-
-### 10.1 `base/` file flow
-
-```mermaid
-flowchart LR
-    dns[DNS and TLS]
-    edge[Public Edge Routing]
-    apiPath[API Path Rewrite]
-
-    b1[cluster-issuer.yaml] --> dns
-    b2[aws-secret.yaml] --> dns
-    b3[certificate.yaml] --> dns
-    b4[ingress.yaml] --> edge
-    b5[strip-api-middleware.yaml] --> apiPath
-
-    dns --> edge
-    apiPath --> edge
-```
-
-### 10.2 `apps/` file flow
+This is the most useful mental model in the whole repo:
 
 ```mermaid
 flowchart LR
-    public[Public App Runtime]
-    state[State / hostPath / DB]
-    admin[Admin Auth and UI]
-    docs[Docs and Ops Helper]
+    Bootstrap[k3s-bootstrap]
+    Cluster[k3s cluster]
+    Base[base/]
+    Apps[apps/]
+    Users[public users and operators]
 
-    staticweb[static-web/deployment.yaml] --> public
-    staticweb --> state
-    startpage[startpage/deployment.yaml] --> public
-    startpage --> state
-    booktoss[booktoss/deployment.yaml] --> public
-    codeserver[code-server/deployment.yaml] --> public
-    codeserver --> state
-    viz[viz-platform/deployment.yaml] --> public
-    viz --> state
-    apiIn[bithabit-api/deployment.yaml] --> public
-    apiIn --> state
-    apiOut[bithabit-api/service.yaml] --> public
-    ghost[ghost/deployment.yaml] --> public
-    ghost --> state
-    wiki[wikijs/deployment.yaml] --> public
-    wiki --> state
-
-    hdoc[headlamp/README.md] --> docs
-    headlamp[headlamp/deployment.yaml] --> admin
-    odoc[oauth2-proxy/README.md] --> docs
-    oauthdeploy[oauth2-proxy/deployment.yaml] --> admin
-    oauthing[oauth2-proxy/ingress.yaml] --> admin
-    oauthsecret[oauth2-proxy/secret.example.yaml.disabled] --> docs
-    oauthscript[oauth2-proxy/update-secret.sh] --> docs
+    Bootstrap --> Cluster --> Base --> Apps --> Users
 ```
 
-Summary:
+`k3s-bootstrap/` prepares the cluster.  
+`base/` opens the front door.  
+`apps/` provides the workloads.
 
-- `base/` builds the edge and shared routing layer.
-- `apps/` runs the actual workloads.
-- admin access is separate from public app routing.
-- `.disabled` files and `README.md` files are operational helpers, not default apply targets.
-
-## 11. Current Domain Map
+## 10. Current Domain Map
 
 | Host | Path | Target | Source file |
 | --- | --- | --- | --- |
@@ -272,7 +351,7 @@ Two Services are referenced in ingress but do not currently have matching manife
 
 That usually means they are managed elsewhere or are still missing from this repo.
 
-## 12. How Route53 and cert-manager Issue TLS
+## 11. How Route53 and cert-manager Issue TLS
 
 This repo uses `AWS Route53`. cert-manager creates the DNS-01 challenge records in Route53, waits for validation, and then stores the certificate in `tls-secret`.
 
@@ -293,16 +372,7 @@ sequenceDiagram
     Secret-->>Ingress: HTTPS termination uses tls-secret
 ```
 
-Remember it like this:
-
-- `cluster-issuer.yaml` defines how issuance works.
-- `aws-secret.yaml` provides Route53 credentials.
-- `certificate.yaml` says which certificate to issue.
-- `tls-secret` is the result consumed by ingress.
-
-## 13. Admin UI Flow
-
-After you understand public app routing, the admin path becomes much easier to follow.
+## 12. Admin UI Flow
 
 `k8s.bit-habit.com` does not point directly to Headlamp. It first goes through `oauth2-proxy`, and only authenticated users reach Headlamp.
 
@@ -327,60 +397,27 @@ sequenceDiagram
     H-->>U: Render the admin UI
 ```
 
-File roles in this flow:
+Key distinction:
 
-- `apps/oauth2-proxy/ingress.yaml`: the public route
-- `apps/oauth2-proxy/deployment.yaml`: GitHub OAuth, cookies, and proxying
-- `apps/headlamp/deployment.yaml`: the Headlamp UI and Kubernetes API access
-- `apps/oauth2-proxy/update-secret.sh`: Secret rotation helper
+- GitHub OAuth controls who can reach the UI.
+- Kubernetes RBAC controls what that UI can do once inside.
 
-## 14. Can Headlamp Provide a Shell or kubectl Access?
+## 13. Can Headlamp Provide a Shell or kubectl Access?
 
 In practical terms:
 
 - Headlamp can inspect resources, show logs, and open pod-level exec sessions.
 - Headlamp is still not a full browser shell environment in this repo.
-- If you want a general-purpose browser shell or raw `kubectl` terminal from outside the cluster, this repo does not currently provide that.
-- A reasonable next step is either the Headlamp desktop app with a local kubeconfig on an operator machine, or a separate web terminal service behind `oauth2-proxy` with tight RBAC and audit controls.
+- This repo does not currently provide a general-purpose web terminal or raw `kubectl` shell from the browser.
 
-For this repo specifically, `Headlamp` should be treated as the cluster UI with targeted pod exec, not as a replacement for a dedicated shell host.
+If you want that later, the sensible options are:
 
-## 15. GitHub OAuth Setup
+- Headlamp Desktop with a local kubeconfig on an operator machine
+- a separate web terminal behind `oauth2-proxy` with tight RBAC and audit controls
 
-To expose `k8s.bit-habit.com`, first create a GitHub OAuth App with:
+## 14. Verification
 
-- Application name: `bit-habit-headlamp`
-- Homepage URL: `https://k8s.bit-habit.com`
-- Authorization callback URL: `https://k8s.bit-habit.com/oauth2/callback`
-
-Then create the Secret:
-
-```bash
-COOKIE_SECRET=$(openssl rand -base64 32 | head -c 32)
-
-kubectl create secret generic oauth2-proxy-secret \
-  -n headlamp \
-  --from-literal=cookie-secret="$COOKIE_SECRET" \
-  --from-literal=client-id="YOUR_GITHUB_CLIENT_ID" \
-  --from-literal=client-secret="YOUR_GITHUB_CLIENT_SECRET" \
-  --dry-run=client -o yaml | kubectl apply -f -
-```
-
-To rotate the live Secret later:
-
-```bash
-cd apps/oauth2-proxy
-
-export OAUTH2_PROXY_COOKIE_SECRET='your-cookie-secret'
-export OAUTH2_PROXY_CLIENT_ID='your-client-id'
-export OAUTH2_PROXY_CLIENT_SECRET='your-client-secret'
-
-./update-secret.sh
-```
-
-## 16. Verification
-
-General cluster checks:
+General checks:
 
 ```bash
 kubectl get ns
@@ -397,7 +434,16 @@ kubectl logs deploy/headlamp -n headlamp --tail=100
 kubectl logs deploy/oauth2-proxy -n headlamp --tail=100
 ```
 
-## 17. Beginner Gotchas
+Server-side k3s checks:
+
+```bash
+sudo cat /etc/rancher/k3s/config.yaml
+sudo cat /etc/rancher/k3s/registries.yaml
+sudo cat /etc/rancher/k3s/k3s.yaml
+sudo systemctl status k3s
+```
+
+## 15. Beginner Gotchas
 
 ### A `Service` is not the application itself
 
@@ -418,10 +464,12 @@ If you move a workload to another node without the same files and directories, i
 
 They both touch `bithabit-api-svc`, so do not apply both casually.
 
-### `.disabled` files are not part of the normal apply path
+### `k3s-bootstrap/` is not a Kubernetes apply directory
 
-They are examples or optional files. They are not active until you intentionally rename or copy them.
+Those files describe the host-side k3s setup. They are templates and notes, not cluster manifests.
 
-## 18. One-Line Memory Aid
+## 16. One-Line Memory Aid
 
-The simplest way to remember this repo is: `base/` is the front door, `apps/` is the runtime, and `Headlamp` sits behind `oauth2-proxy` for admin access.
+The easiest way to understand this repo is:
+
+`k3s-bootstrap/` creates the cluster, `base/` opens the front door, and `apps/` runs what users and operators actually touch.

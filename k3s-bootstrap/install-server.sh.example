@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+# Example installation for the first k3s server.
+# Adjust the config file on disk before running this.
+
+curl -sfL https://get.k3s.io | INSTALL_K3S_EXEC="server --config /etc/rancher/k3s/config.yaml" sh -
