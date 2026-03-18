@@ -15,12 +15,12 @@ If you are confused about "where k3s ends" and "where app manifests begin", this
 
 ```mermaid
 flowchart TD
-    Server[Server / OS]
-    Bootstrap[k3s-bootstrap/]
-    K3s[k3s control plane and node services]
-    System[Traefik, kube-system, cert-manager]
-    Workloads[base/ and apps/]
-    Public[Public domains and admin UI]
+    Server["Server / OS"]
+    Bootstrap["k3s-bootstrap/"]
+    K3s["k3s control plane and node services"]
+    System["Traefik, kube-system, cert-manager"]
+    Workloads["base/ and apps/"]
+    Public["Public domains and admin UI"]
 
     Server --> Bootstrap --> K3s --> System --> Workloads --> Public
 ```
@@ -37,15 +37,15 @@ If you only want the shortest path to understanding this repo, read and apply in
 
 ```mermaid
 flowchart TD
-    A[1. Read k3s-bootstrap/README.md]
-    B[2. Understand k3s-bootstrap/config.yaml.example]
-    C[3. Apply base/cert-manager]
-    D[4. Apply base/middlewares and base/ingress]
-    E[5. Apply public apps from apps/]
-    F[6. Apply apps/headlamp/deployment.yaml]
-    G[7. Create oauth2-proxy-secret in headlamp]
-    H[8. Apply apps/oauth2-proxy]
-    I[9. Open domains and verify]
+    A["1. Read k3s-bootstrap/README.md"]
+    B["2. Understand k3s-bootstrap/config.yaml.example"]
+    C["3. Apply base/cert-manager"]
+    D["4. Apply base/middlewares and base/ingress"]
+    E["5. Apply public apps from apps/"]
+    F["6. Apply apps/headlamp/deployment.yaml"]
+    G["7. Create oauth2-proxy-secret in headlamp"]
+    H["8. Apply apps/oauth2-proxy"]
+    I["9. Open domains and verify"]
 
     A --> B --> C --> D --> E --> F --> G --> H --> I
 ```
@@ -89,12 +89,12 @@ This directory is **not** auto-applied by Kubernetes. It is a documentation and 
 
 ```mermaid
 flowchart LR
-    Repo[k3s-bootstrap/*]
-    Host[/Server filesystem/]
-    Config[/etc/rancher/k3s/config.yaml]
-    Registries[/etc/rancher/k3s/registries.yaml]
-    Kubeconfig[/etc/rancher/k3s/k3s.yaml]
-    Service[systemd k3s service]
+    Repo["k3s-bootstrap/*"]
+    Host["Server filesystem"]
+    Config["/etc/rancher/k3s/config.yaml"]
+    Registries["/etc/rancher/k3s/registries.yaml"]
+    Kubeconfig["/etc/rancher/k3s/k3s.yaml"]
+    Service["systemd k3s service"]
 
     Repo --> Host
     Host --> Config
@@ -223,19 +223,19 @@ Read public traffic before you read the admin UI.
 
 ```mermaid
 flowchart LR
-    User[Browser]
-    R53[Route53 DNS]
-    Node[k3s node public IP]
-    Traefik[Traefik ingress controller]
-    Ingress[Ingress rules]
-    Service[ClusterIP Service]
-    Pod[Deployment / Pod]
-    Data[hostPath or in-cluster DB]
+    User["Browser"]
+    R53["Route53 DNS"]
+    Node["k3s node public IP"]
+    Traefik["Traefik ingress controller"]
+    Ingress["Ingress rules"]
+    Service["ClusterIP Service"]
+    Pod["Deployment / Pod"]
+    Data["hostPath or in-cluster DB"]
 
-    Issuer[ClusterIssuer]
-    Cert[Certificate]
-    CM[cert-manager]
-    TLS[tls-secret]
+    Issuer["ClusterIssuer"]
+    Cert["Certificate"]
+    CM["cert-manager"]
+    TLS["tls-secret"]
 
     User --> R53 --> Node --> Traefik --> Ingress --> Service --> Pod --> Data
 
@@ -310,11 +310,11 @@ This is the most useful mental model in the whole repo:
 
 ```mermaid
 flowchart LR
-    Bootstrap[k3s-bootstrap]
-    Cluster[k3s cluster]
-    Base[base/]
-    Apps[apps/]
-    Users[public users and operators]
+    Bootstrap["k3s-bootstrap"]
+    Cluster["k3s cluster"]
+    Base["base/"]
+    Apps["apps/"]
+    Users["public users and operators"]
 
     Bootstrap --> Cluster --> Base --> Apps --> Users
 ```
