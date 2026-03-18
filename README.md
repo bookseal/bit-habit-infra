@@ -415,7 +415,33 @@ If you want that later, the sensible options are:
 - Headlamp Desktop with a local kubeconfig on an operator machine
 - a separate web terminal behind `oauth2-proxy` with tight RBAC and audit controls
 
-## 14. Verification
+## 14. Future Work
+
+This repo does not currently use `Terraform` or `Helm`, and that is intentional for now.
+
+Possible future directions:
+
+- `Terraform`
+  - If OCI infrastructure needs to become reproducible in code later, a `terraform/` directory could manage resources such as:
+  - the Ubuntu instance
+  - VCN / subnet
+  - NSG rules
+  - public IP
+  - DNS records
+- `Helm`
+  - If third-party Kubernetes packages grow later, `Helm` could be used for components such as:
+  - `cert-manager`
+  - `Argo CD`
+  - `Prometheus` and `Grafana`
+  - `external-dns`
+
+For now, the repo stays intentionally simple:
+
+- `k3s-bootstrap/` for host-side k3s setup
+- `base/` for shared cluster entry resources
+- `apps/` for workload manifests
+
+## 15. Verification
 
 General checks:
 
@@ -443,7 +469,7 @@ sudo cat /etc/rancher/k3s/k3s.yaml
 sudo systemctl status k3s
 ```
 
-## 15. Beginner Gotchas
+## 16. Beginner Gotchas
 
 ### A `Service` is not the application itself
 
@@ -468,7 +494,7 @@ They both touch `bithabit-api-svc`, so do not apply both casually.
 
 Those files describe the host-side k3s setup. They are templates and notes, not cluster manifests.
 
-## 16. One-Line Memory Aid
+## 17. One-Line Memory Aid
 
 The easiest way to understand this repo is:
 
