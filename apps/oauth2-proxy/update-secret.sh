@@ -2,7 +2,7 @@
 
 set -euo pipefail
 
-NAMESPACE="${NAMESPACE:-kubernetes-dashboard}"
+NAMESPACE="${NAMESPACE:-headlamp}"
 SECRET_NAME="${SECRET_NAME:-oauth2-proxy-secret}"
 
 if [[ -z "${OAUTH2_PROXY_COOKIE_SECRET:-}" ]]; then

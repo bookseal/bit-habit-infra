@@ -22,4 +22,5 @@ kubectl apply -f ../oauth2-proxy/
 - Headlamp runs in-cluster.
 - An init container writes a kubeconfig for the `headlamp-admin` service account.
 - `oauth2-proxy` protects the public URL.
-- The old Kubernetes Dashboard setup is left in the repo only as a fallback reference.
+- Headlamp is the only admin UI tracked in this repo.
+- Headlamp can inspect cluster resources and open pod-level exec sessions, but this deployment does not add a general-purpose browser shell or arbitrary `kubectl` terminal.

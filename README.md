@@ -1,22 +1,84 @@
 # bit-habit-infra
 
-`bit-habit.com` k3s 클러스터를 운영하는 Kubernetes manifest 저장소입니다.
+Kubernetes manifests for the `bit-habit.com` k3s cluster.
 
-이 저장소는 다음을 다룹니다.
+This repo manages:
 
-- `Route53` 기반 DNS / DNS-01 인증
-- `cert-manager` 기반 TLS 발급
-- `Traefik` ingress 라우팅
-- 공개 서비스 배포
-- 마지막에 설명하는 admin UI (`Headlamp` + `oauth2-proxy`)
+- `Route53` DNS and DNS-01 validation
+- `cert-manager` TLS issuance
+- `Traefik` ingress routing
+- public application workloads
+- the admin entrypoint for `k8s.bit-habit.com` using `Headlamp` and `oauth2-proxy`
 
-## 1. 이 저장소를 한 문장으로
+## 1. Beginner-First Deployment Order
 
-이 저장소는 `Route53 -> k3s -> Traefik -> Ingress -> Service -> Pod` 흐름으로 `bit-habit.com` 계열 서비스를 운영하고, `cert-manager`로 와일드카드 인증서를 관리하는 YAML 모음입니다.
+If you only need the shortest path to understanding or applying this repo, start here.
 
-## 2. 초보자가 먼저 봐야 할 전체 흐름
+```mermaid
+flowchart TD
+    A[1. Ensure k3s, Traefik, and cert-manager are ready]
+    B[2. Apply base/cert-manager]
+    C[3. Apply base/middlewares and base/ingress]
+    D[4. Apply public apps from apps/]
+    E[5. Apply apps/headlamp/deployment.yaml]
+    F[6. Create oauth2-proxy-secret in the headlamp namespace]
+    G[7. Apply apps/oauth2-proxy]
+    H[8. Open domains and verify]
 
-처음에는 admin UI를 빼고, 공개 서비스가 어떻게 동작하는지만 이해하면 됩니다.
+    A --> B --> C --> D --> E --> F --> G --> H
+```
+
+Prerequisites:
+
+- a working `k3s` cluster with `Traefik`
+- `cert-manager` installed and running
+- required external resources such as `basic-auth`, `nginx-conf`, `booktoss-env`, `ghost-mysql-pass`, `wikijs-db-pass`
+
+Typical commands:
+
+```bash
+kubectl apply -f base/cert-manager/
+kubectl apply -f base/middlewares/
+kubectl apply -f base/ingress.yaml
+
+kubectl apply -f apps/static-web/deployment.yaml
+kubectl apply -f apps/startpage/deployment.yaml
+kubectl apply -f apps/booktoss/deployment.yaml
+kubectl apply -f apps/ghost/deployment.yaml
+kubectl apply -f apps/wikijs/deployment.yaml
+
+kubectl apply -f apps/headlamp/deployment.yaml
+
+kubectl create secret generic oauth2-proxy-secret \
+  -n headlamp \
+  --from-literal=cookie-secret="YOUR_COOKIE_SECRET" \
+  --from-literal=client-id="YOUR_GITHUB_CLIENT_ID" \
+  --from-literal=client-secret="YOUR_GITHUB_CLIENT_SECRET" \
+  --dry-run=client -o yaml | kubectl apply -f -
+
+kubectl apply -f apps/oauth2-proxy/deployment.yaml
+kubectl apply -f apps/oauth2-proxy/ingress.yaml
+```
+
+## 2. Public Admin Entry Screen
+
+This is the public landing screen currently shown at `https://k8s.bit-habit.com` before GitHub authentication. The screenshot was captured on **March 18, 2026 (UTC)**.
+
+![Public login screen for k8s.bit-habit.com](assets/k8s-bit-habit-com-login.png)
+
+What this means operationally:
+
+- the public URL is fronted by `oauth2-proxy`
+- unauthenticated users see the GitHub sign-in page first
+- `Headlamp` only appears after successful GitHub OAuth
+
+## 3. This Repo in One Sentence
+
+This repo runs `bit-habit.com` workloads through the flow `Route53 -> k3s -> Traefik -> Ingress -> Service -> Pod`, while `cert-manager` issues the wildcard TLS certificate and `Headlamp` provides the cluster admin UI behind GitHub OAuth.
+
+## 4. Understand the Public Traffic Flow First
+
+Start with public traffic before looking at the admin UI.
 
 ```mermaid
 flowchart LR
@@ -42,106 +104,87 @@ flowchart LR
     CM --> TLS --> Traefik
 ```
 
-이 그림에서 초보자가 기억해야 할 핵심은 아래 4개입니다.
+Four things to remember:
 
-1. 사용자는 먼저 `Route53`을 통해 서버 IP를 찾습니다.
-2. `Traefik`이 외부 HTTP/HTTPS 요청을 받아 어떤 `Service`로 보낼지 결정합니다.
-3. `Service`는 실제 컨테이너가 떠 있는 `Pod`로 요청을 전달합니다.
-4. TLS 인증서는 `cert-manager`가 `Route53 DNS-01` 검증으로 발급해서 `tls-secret`에 넣고, Ingress가 그 secret을 사용합니다.
+1. `Route53` resolves the domain and also participates in `DNS-01` validation.
+2. `Traefik` is the public ingress controller at the edge of the cluster.
+3. `Ingress` maps hostnames and paths to internal `Service` objects.
+4. `Service` sends traffic to the actual application `Pod` objects.
 
-## 3. 이 repo를 읽는 가장 쉬운 순서
+## 5. The Fastest Way to Read This Repo
 
-1. 이 README의 2번 그림을 먼저 봅니다.
-2. `base/` 파일이 클러스터 입구를 어떻게 만드는지 봅니다.
-3. `apps/`에서 서비스 하나만 골라 `Deployment + Service` 연결을 봅니다.
-4. 마지막에 admin UI 섹션을 읽습니다.
+1. Read section 1 first.
+2. Read the `base/` files as the "front door" of the cluster.
+3. Pick one app under `apps/` and trace `Deployment -> Service -> Ingress`.
+4. Read the admin UI sections last.
 
-## 4. 이 repo에서 자주 보는 Kubernetes 객체
+## 6. Kubernetes Objects Used Here
 
-| 객체 | 뜻 | 이 repo에서 하는 일 |
+| Object | Meaning | What it does in this repo |
 | --- | --- | --- |
-| `Deployment` | Pod를 원하는 개수로 유지 | 앱, DB, Headlamp, oauth2-proxy 실행 |
-| `Service` | Pod 앞의 고정 네트워크 이름 | Ingress가 붙는 내부 목적지 |
-| `Ingress` | 공개 HTTP/HTTPS 라우팅 | 여러 도메인을 앱 Service로 연결 |
-| `IngressRoute` | Traefik 전용 라우팅 CRD | `k8s.bit-habit.com` admin 라우팅 |
-| `Secret` | 민감한 값 저장 | Route53 자격증명, OAuth secret, DB 비밀번호 |
-| `ConfigMap` | 일반 설정 저장 | nginx 설정 |
-| `ServiceAccount` | Pod가 클러스터에 접근할 때 쓰는 신원 | Headlamp가 Kubernetes API를 읽을 때 사용 |
-| `ClusterRoleBinding` | 권한 부여 | Headlamp / legacy dashboard에 cluster-wide 권한 연결 |
-| `Certificate` | cert-manager에 인증서 요청 | `bit-habit.com` 와일드카드 TLS 생성 |
-| `ClusterIssuer` | 인증서 발급 방법 정의 | Let’s Encrypt + Route53 DNS-01 설정 |
+| `Deployment` | Keeps Pods running | Runs apps, databases, Headlamp, and oauth2-proxy |
+| `Service` | Stable internal network name for Pods | Gives Ingress a target to forward traffic to |
+| `Ingress` | Public HTTP/HTTPS route | Connects domains to internal Services |
+| `IngressRoute` | Traefik-specific routing CRD | Exposes `k8s.bit-habit.com` through oauth2-proxy |
+| `Secret` | Sensitive value storage | Stores Route53 credentials, OAuth values, DB passwords |
+| `ConfigMap` | Non-secret configuration | Stores nginx configuration |
+| `ServiceAccount` | Kubernetes identity for a Pod | Lets Headlamp talk to the Kubernetes API |
+| `ClusterRoleBinding` | Permission grant | Gives Headlamp cluster-wide access |
+| `Certificate` | cert-manager certificate request | Requests the wildcard TLS certificate |
+| `ClusterIssuer` | Certificate issuance policy | Tells cert-manager to use Let's Encrypt and Route53 |
 
-## 5. 시작 전에 알아야 할 운영 특성
+## 7. Operational Characteristics
 
-- 이 저장소는 `Helm`, `Terraform`, `Kustomize`, CI 없이 plain YAML 중심으로 운영됩니다.
-- 여러 앱이 `hostPath`를 사용하므로, k3s 노드의 로컬 디렉터리 구조에 의존합니다.
-- 여러 앱 이미지가 `imagePullPolicy: Never` 이므로, 노드에 이미지가 이미 준비되어 있어야 합니다.
-- 이 repo만 `kubectl apply`한다고 모든 것이 끝나지는 않습니다. 외부 `Secret`, `ConfigMap`, namespace가 몇 가지 더 필요합니다.
+- This repo uses plain YAML. There is no `Helm`, `Terraform`, `Kustomize`, or CI pipeline here.
+- Several apps depend on `hostPath`, so they are tied to the node filesystem layout.
+- Several app images use `imagePullPolicy: Never`, so images must already exist on the node.
+- Not every dependency lives in this repo. Some `Secret` and `ConfigMap` objects must already exist.
 
-필수로 존재해야 하는 외부 리소스는 아래와 같습니다.
+## 8. `base/` File Inventory
 
-- `cert-manager` 설치 및 `cert-manager` namespace
-- `kubernetes-dashboard` namespace
-- `basic-auth`
-- `nginx-conf`
-- `booktoss-env`
-- `ghost-mysql-pass`
-- `wikijs-db-pass`
-- `oauth2-proxy-secret`
+`base/` is the cluster front door: certificates, shared ingress, and shared Traefik middleware.
 
-## 6. `base/` 전체 파일 설명
-
-`base/`는 "클러스터 입구"를 담당합니다. 즉, 인증서, 공용 도메인 라우팅, Traefik middleware가 여기 있습니다.
-
-| 파일 | 무엇을 정의하나 | infra flow에서 맡는 위치 | 초보자 메모 |
+| File | What it defines | Where it acts in the flow | Beginner note |
 | --- | --- | --- | --- |
-| `base/cert-manager/cluster-issuer.yaml` | Let’s Encrypt production `ClusterIssuer`와 `Route53` DNS-01 solver | DNS / TLS 발급 시작점 | 인증서를 어떤 방식으로 발급할지 정의합니다. |
-| `base/cert-manager/aws-secret.yaml` | `route53-credentials-secret` | DNS / TLS 발급 자격증명 | cert-manager가 Route53에 TXT 레코드를 만들 때 씁니다. |
-| `base/cert-manager/certificate.yaml` | `bit-habit.com`, `*.bit-habit.com` 인증서 요청 | DNS / TLS 발급 결과 생성 | 최종 결과는 `tls-secret`입니다. |
-| `base/ingress.yaml` | 메인 공개 `Ingress`와 `habit.bit-habit.com/api/` 전용 `Ingress` | 공용 트래픽 진입점 | 어떤 도메인이 어떤 Service로 가는지 대부분 여기서 결정됩니다. |
-| `base/middlewares/strip-api-middleware.yaml` | `/api` prefix 제거용 Traefik `Middleware` | API path 정리 | `habit.bit-habit.com/api/...` 요청을 백엔드가 이해하는 경로로 바꿉니다. |
+| `base/cert-manager/cluster-issuer.yaml` | The production `ClusterIssuer` using Let’s Encrypt and the `Route53` DNS-01 solver | DNS and TLS issuance | This defines how certificates are issued. |
+| `base/cert-manager/aws-secret.yaml` | `route53-credentials-secret` | DNS and TLS issuance | cert-manager uses this to create Route53 DNS challenge records. |
+| `base/cert-manager/certificate.yaml` | Wildcard certificate request for `bit-habit.com` and `*.bit-habit.com` | DNS and TLS issuance | The result becomes `tls-secret`. |
+| `base/ingress.yaml` | The main public `Ingress` plus a dedicated `/api/` `Ingress` for `habit.bit-habit.com` | Public routing | Most domain-to-service mapping starts here. |
+| `base/middlewares/strip-api-middleware.yaml` | Traefik `Middleware` that strips `/api` | API path normalization | This makes `/api/...` requests match what the backend expects. |
 
-## 7. `apps/` 전체 파일 설명
+## 9. `apps/` File Inventory
 
-`apps/`는 실제 workload를 담습니다. 공개 서비스, admin UI, 운영용 스크립트, legacy 참고 파일이 함께 들어 있습니다.
+`apps/` holds the actual workloads, admin components, and operator helper files.
 
-### 7.1 공개 서비스 파일
+### 9.1 Public application files
 
-| 파일 | 무엇을 정의하나 | infra flow에서 맡는 위치 | 초보자 메모 |
+| File | What it defines | Where it acts in the flow | Beginner note |
 | --- | --- | --- | --- |
-| `apps/static-web/deployment.yaml` | `static-web` Deployment + Service | 공개 웹 런타임 | `bit-habit.com`, `habit.bit-habit.com`, `status.bit-habit.com` 같은 정적 사이트 진입점입니다. 여러 `hostPath`, `ConfigMap`, `Secret`에 의존합니다. |
-| `apps/startpage/deployment.yaml` | `startpage` Deployment + Service | 공개 웹 런타임 | `startpage.bit-habit.com`을 담당합니다. |
-| `apps/booktoss/deployment.yaml` | `booktoss` Deployment + Service | 공개 웹 런타임 | `booktoss-env` Secret이 필요합니다. |
-| `apps/code-server/deployment.yaml` | `code-server` Deployment + Service | 공개 웹 런타임 | 브라우저 기반 개발 환경입니다. 로컬 workspace를 `hostPath`로 마운트합니다. |
-| `apps/viz-platform/deployment.yaml` | `viz-platform` Deployment + Service | 공개 웹 런타임 | 시각화 앱을 실행합니다. 앱 소스를 `hostPath`로 직접 마운트합니다. |
-| `apps/bithabit-api/deployment.yaml` | `bithabit-api` Deployment + Service | 공개 API 런타임 | 기본 모드는 클러스터 안에서 API를 직접 띄우는 방식입니다. |
-| `apps/bithabit-api/service.yaml` | `bithabit-api-svc` Service + Endpoints | 외부 API 백엔드 연결 | 대체 모드입니다. `10.0.0.61:8002` 외부 엔드포인트로 보냅니다. `deployment.yaml`과 동시에 적용하면 충돌 가능성이 있습니다. |
-| `apps/ghost/deployment.yaml` | `ghost-mysql`, `ghost` Deployment + Service | 공개 웹 + 내부 DB | 블로그와 MySQL을 함께 정의합니다. 데이터는 `hostPath`에 저장됩니다. |
-| `apps/wikijs/deployment.yaml` | `wikijs-db`, `wikijs` Deployment + Service | 공개 웹 + 내부 DB | Wiki.js와 PostgreSQL을 함께 정의합니다. |
+| `apps/static-web/deployment.yaml` | `static-web` Deployment and Service | Public web runtime | Serves `bit-habit.com`, `habit.bit-habit.com`, and `status.bit-habit.com` content. Uses multiple `hostPath` mounts plus `ConfigMap` and `Secret` inputs. |
+| `apps/startpage/deployment.yaml` | `startpage` Deployment and Service | Public web runtime | Serves `startpage.bit-habit.com`. |
+| `apps/booktoss/deployment.yaml` | `booktoss` Deployment and Service | Public web runtime | Depends on the `booktoss-env` Secret. |
+| `apps/code-server/deployment.yaml` | `code-server` Deployment and Service | Public web runtime | Exposes a browser-based coding environment and mounts the node workspace with `hostPath`. |
+| `apps/viz-platform/deployment.yaml` | `viz-platform` Deployment and Service | Public web runtime | Mounts the source tree directly from the node with `hostPath`. |
+| `apps/bithabit-api/deployment.yaml` | `bithabit-api` Deployment and Service | Public API runtime | Runs the API inside the cluster. |
+| `apps/bithabit-api/service.yaml` | `bithabit-api-svc` Service and manual `Endpoints` | External API backend mode | This is an alternative mode that forwards to `10.0.0.61:8002`. Do not apply it together with the in-cluster Service unless that is intentional. |
+| `apps/ghost/deployment.yaml` | `ghost-mysql` and `ghost` Deployments plus Services | Public web and internal database | Runs the blog and its MySQL database with `hostPath` data. |
+| `apps/wikijs/deployment.yaml` | `wikijs-db` and `wikijs` Deployments plus Services | Public web and internal database | Runs Wiki.js and PostgreSQL. |
 
-### 7.2 admin UI와 운영 파일
+### 9.2 Admin and operator files
 
-| 파일 | 무엇을 정의하나 | infra flow에서 맡는 위치 | 초보자 메모 |
+| File | What it defines | Where it acts in the flow | Beginner note |
 | --- | --- | --- | --- |
-| `apps/headlamp/README.md` | Headlamp 운영 설명 | 운영 문서 | 실제 적용 파일은 아니고, admin UI 설명서입니다. |
-| `apps/headlamp/deployment.yaml` | `headlamp` namespace, ServiceAccount, ClusterRoleBinding, Deployment, Service | admin UI 본체 | Headlamp가 Kubernetes API를 읽기 위한 in-cluster 구성을 담고 있습니다. |
-| `apps/oauth2-proxy/README.md` | GitHub OAuth 설정 설명 | 운영 문서 | oauth2-proxy를 어떻게 설치하고 검증하는지 설명합니다. |
-| `apps/oauth2-proxy/deployment.yaml` | oauth2-proxy Deployment + Service | admin 인증 계층 | `k8s.bit-habit.com` 요청을 GitHub 로그인 뒤 Headlamp로 프록시합니다. |
-| `apps/oauth2-proxy/ingress.yaml` | `k8s.bit-habit.com`용 Traefik `IngressRoute` | admin 진입점 | admin UI의 공개 URL은 여기서 시작합니다. |
-| `apps/oauth2-proxy/secret.example.yaml.disabled` | 예시 OAuth secret 템플릿 | 운영 템플릿 | 비활성 예시 파일입니다. 그대로 apply 하지 않습니다. |
-| `apps/oauth2-proxy/update-secret.sh` | OAuth secret 갱신 스크립트 | 운영 헬퍼 | GitHub OAuth credential을 안전하게 바꾸고 rollout restart까지 수행합니다. |
+| `apps/headlamp/README.md` | Headlamp-specific operational notes | Operator docs | Explains the in-cluster Headlamp setup. |
+| `apps/headlamp/deployment.yaml` | The `headlamp` namespace, ServiceAccount, ClusterRoleBinding, Deployment, and Service | Admin UI runtime | This is the actual Headlamp deployment. |
+| `apps/oauth2-proxy/README.md` | oauth2-proxy setup notes | Operator docs | Explains GitHub OAuth setup and troubleshooting. |
+| `apps/oauth2-proxy/deployment.yaml` | oauth2-proxy Deployment and Service | Admin authentication layer | Handles GitHub login before traffic reaches Headlamp. |
+| `apps/oauth2-proxy/ingress.yaml` | Traefik `IngressRoute` for `k8s.bit-habit.com` | Admin public entrypoint | This is the public route for the admin UI. |
+| `apps/oauth2-proxy/secret.example.yaml.disabled` | Example Secret template | Operator helper template | Sample values only. It should stay disabled. |
+| `apps/oauth2-proxy/update-secret.sh` | Secret rotation helper script | Operator helper | Updates the GitHub OAuth Secret and restarts oauth2-proxy. |
 
-### 7.3 legacy 참고 파일
+## 10. Where Each File Fits in the Infrastructure Flow
 
-| 파일 | 무엇을 정의하나 | infra flow에서 맡는 위치 | 초보자 메모 |
-| --- | --- | --- | --- |
-| `apps/kubernetes-dashboard/README.md` | legacy dashboard 설명 | legacy 운영 문서 | 현재 메인 admin UI는 아닙니다. 참고용입니다. |
-| `apps/kubernetes-dashboard/deployment.yaml` | legacy dashboard용 ServiceAccount, ClusterRoleBinding, 토큰 Secret | legacy admin 권한 | 공식 dashboard가 이미 설치되어 있다는 전제가 있습니다. |
-| `apps/kubernetes-dashboard/ingress-direct.yaml.disabled` | legacy dashboard 직접 노출용 `IngressRoute` | legacy admin 라우팅 | 현재는 비활성 파일입니다. oauth2-proxy를 쓰지 않을 때만 되살립니다. |
-
-## 8. 파일이 infra flow 어디에서 동작하는지
-
-### 8.1 `base/` 파일 흐름
+### 10.1 `base/` file flow
 
 ```mermaid
 flowchart LR
@@ -159,7 +202,7 @@ flowchart LR
     apiPath --> edge
 ```
 
-### 8.2 `apps/` 파일 흐름
+### 10.2 `apps/` file flow
 
 ```mermaid
 flowchart LR
@@ -167,7 +210,6 @@ flowchart LR
     state[State / hostPath / DB]
     admin[Admin Auth and UI]
     docs[Docs and Ops Helper]
-    legacy[Legacy Fallback]
 
     staticweb[static-web/deployment.yaml] --> public
     staticweb --> state
@@ -193,24 +235,18 @@ flowchart LR
     oauthing[oauth2-proxy/ingress.yaml] --> admin
     oauthsecret[oauth2-proxy/secret.example.yaml.disabled] --> docs
     oauthscript[oauth2-proxy/update-secret.sh] --> docs
-
-    kdoc[kubernetes-dashboard/README.md] --> legacy
-    kdeploy[kubernetes-dashboard/deployment.yaml] --> legacy
-    king[kubernetes-dashboard/ingress-direct.yaml.disabled] --> legacy
 ```
 
-이 두 그림을 보면 바로 구분할 수 있습니다.
+Summary:
 
-- `base/`는 클러스터 입구를 만듭니다.
-- `apps/`는 실제 서비스를 띄웁니다.
-- admin UI는 공개 앱과 별개로 뒤쪽에 따로 붙습니다.
-- `.disabled` 파일과 각종 `README.md`, 스크립트는 운영 보조 자료입니다.
+- `base/` builds the edge and shared routing layer.
+- `apps/` runs the actual workloads.
+- admin access is separate from public app routing.
+- `.disabled` files and `README.md` files are operational helpers, not default apply targets.
 
-## 9. 현재 도메인과 연결 대상
+## 11. Current Domain Map
 
-아래 표는 실제 routing 결과를 한 번에 보여줍니다.
-
-| Host | 경로 | 연결 대상 | 출처 파일 |
+| Host | Path | Target | Source file |
 | --- | --- | --- | --- |
 | `bit-habit.com` | `/` | `static-web-svc` | `base/ingress.yaml` |
 | `www.bit-habit.com` | `/` | `static-web-svc` | `base/ingress.yaml` |
@@ -220,7 +256,7 @@ flowchart LR
 | `code-server.bit-habit.com` | `/` | `code-server-svc` | `base/ingress.yaml` |
 | `daily-seongsu.bit-habit.com` | `/` | `daily-seongsu-svc` | `base/ingress.yaml` |
 | `habit.bit-habit.com` | `/` | `static-web-svc` | `base/ingress.yaml` |
-| `habit.bit-habit.com` | `/api/` | `bithabit-api-svc` + strip `/api` | `base/ingress.yaml`, `base/middlewares/strip-api-middleware.yaml` |
+| `habit.bit-habit.com` | `/api/` | `bithabit-api-svc` plus `/api` stripping | `base/ingress.yaml`, `base/middlewares/strip-api-middleware.yaml` |
 | `startpage.bit-habit.com` | `/` | `startpage-svc` | `base/ingress.yaml` |
 | `status.bit-habit.com` | `/` | `static-web-svc` | `base/ingress.yaml` |
 | `seoul-apt.bit-habit.com` | `/` | `seoul-apt-price` | `base/ingress.yaml` |
@@ -229,54 +265,16 @@ flowchart LR
 | `www.wiki.bit-habit.com` | `/` | `wikijs-svc` | `base/ingress.yaml` |
 | `k8s.bit-habit.com` | `/` | `oauth2-proxy -> Headlamp` | `apps/oauth2-proxy/ingress.yaml` |
 
-주의할 점:
+Two Services are referenced in ingress but do not currently have matching manifests in `apps/`:
 
 - `daily-seongsu-svc`
 - `seoul-apt-price`
 
-위 두 Service는 현재 이 repo의 `apps/` 아래 manifest가 보이지 않습니다. 즉, 다른 경로에서 관리되거나 아직 누락된 상태일 수 있습니다.
+That usually means they are managed elsewhere or are still missing from this repo.
 
-## 10. 초보자 기준 적용 순서
+## 12. How Route53 and cert-manager Issue TLS
 
-가장 안전한 읽기 순서는 "입구 먼저, 앱 나중"입니다.
-
-```mermaid
-flowchart TD
-    A[1. cert-manager and namespaces ready]
-    B[2. Apply base/cert-manager]
-    C[3. Apply base/middlewares and base/ingress]
-    D[4. Apply public apps in apps/]
-    E[5. Create oauth2-proxy-secret]
-    F[6. Apply Headlamp]
-    G[7. Apply oauth2-proxy]
-    H[8. Open domains and verify]
-
-    A --> B --> C --> D --> E --> F --> G --> H
-```
-
-대표 명령은 아래와 같습니다.
-
-```bash
-kubectl apply -f base/cert-manager/
-kubectl apply -f base/middlewares/
-kubectl apply -f base/ingress.yaml
-
-kubectl apply -f apps/static-web/deployment.yaml
-kubectl apply -f apps/startpage/deployment.yaml
-kubectl apply -f apps/booktoss/deployment.yaml
-kubectl apply -f apps/ghost/deployment.yaml
-kubectl apply -f apps/wikijs/deployment.yaml
-
-kubectl apply -f apps/headlamp/deployment.yaml
-kubectl apply -f apps/oauth2-proxy/deployment.yaml
-kubectl apply -f apps/oauth2-proxy/ingress.yaml
-```
-
-`oauth2-proxy-secret`는 apply 전에 먼저 준비해야 합니다.
-
-## 11. 인증서 발급이 어떻게 동작하는가
-
-이 저장소는 `AWS Route53`를 사용합니다. 핵심은 cert-manager가 Route53에 DNS-01 TXT 레코드를 만들고, 검증이 끝나면 `tls-secret`을 만든다는 점입니다.
+This repo uses `AWS Route53`. cert-manager creates the DNS-01 challenge records in Route53, waits for validation, and then stores the certificate in `tls-secret`.
 
 ```mermaid
 sequenceDiagram
@@ -288,25 +286,25 @@ sequenceDiagram
     participant Ingress as Traefik Ingress
 
     Cert->>CM: Request wildcard certificate
-    Issuer->>CM: Tell CM to use Let's Encrypt + Route53
+    Issuer->>CM: Use Let's Encrypt plus Route53
     CM->>AWS: Create DNS-01 TXT record
-    AWS-->>CM: DNS challenge becomes visible
+    AWS-->>CM: Challenge becomes visible
     CM-->>Secret: Store issued certificate in tls-secret
     Secret-->>Ingress: HTTPS termination uses tls-secret
 ```
 
-초보자 관점에서는 아래처럼 기억하면 됩니다.
+Remember it like this:
 
-- `cluster-issuer.yaml`은 "어떻게 발급할지"를 말합니다.
-- `aws-secret.yaml`은 "Route53에 접근할 자격증명"입니다.
-- `certificate.yaml`은 "무슨 도메인 인증서를 만들지"를 말합니다.
-- `tls-secret`은 "Ingress가 실제로 쓰는 결과물"입니다.
+- `cluster-issuer.yaml` defines how issuance works.
+- `aws-secret.yaml` provides Route53 credentials.
+- `certificate.yaml` says which certificate to issue.
+- `tls-secret` is the result consumed by ingress.
 
-## 12. 마지막으로 보는 admin UI 흐름
+## 13. Admin UI Flow
 
-공개 서비스 구조를 이해한 뒤에, 마지막으로 admin UI를 보면 훨씬 쉽습니다.
+After you understand public app routing, the admin path becomes much easier to follow.
 
-`k8s.bit-habit.com`은 일반 앱처럼 바로 Headlamp로 가지 않습니다. 먼저 `oauth2-proxy`를 통과하고, GitHub OAuth가 성공해야만 Headlamp로 들어갑니다.
+`k8s.bit-habit.com` does not point directly to Headlamp. It first goes through `oauth2-proxy`, and only authenticated users reach Headlamp.
 
 ```mermaid
 sequenceDiagram
@@ -325,46 +323,50 @@ sequenceDiagram
     G-->>O: OAuth callback
     O->>H: Proxy authenticated request
     H->>K: Read cluster state with ServiceAccount
-    K-->>H: Pods, Deployments, Ingresses, Events
-    H-->>U: Render admin UI
+    K-->>H: Return cluster resources
+    H-->>U: Render the admin UI
 ```
 
-여기서 파일별 역할은 이렇게 나뉩니다.
+File roles in this flow:
 
-- `apps/oauth2-proxy/ingress.yaml`: `k8s.bit-habit.com` 공개 진입점
-- `apps/oauth2-proxy/deployment.yaml`: GitHub 로그인과 세션 처리
-- `apps/headlamp/deployment.yaml`: 실제 Kubernetes UI와 ServiceAccount 권한
-- `apps/oauth2-proxy/update-secret.sh`: GitHub OAuth secret 갱신 자동화
+- `apps/oauth2-proxy/ingress.yaml`: the public route
+- `apps/oauth2-proxy/deployment.yaml`: GitHub OAuth, cookies, and proxying
+- `apps/headlamp/deployment.yaml`: the Headlamp UI and Kubernetes API access
+- `apps/oauth2-proxy/update-secret.sh`: Secret rotation helper
 
-중요한 사실 하나:
+## 14. Can Headlamp Provide a Shell or kubectl Access?
 
-- GitHub 로그인은 "누가 UI에 들어오느냐"를 결정합니다.
-- Headlamp ServiceAccount 권한은 "들어온 사람이 클러스터 안에서 무엇을 보느냐"를 결정합니다.
+In practical terms:
 
-## 13. GitHub OAuth 준비와 secret 생성
+- Headlamp can inspect resources, show logs, and open pod-level exec sessions.
+- Headlamp is still not a full browser shell environment in this repo.
+- If you want a general-purpose browser shell or raw `kubectl` terminal from outside the cluster, this repo does not currently provide that.
+- A reasonable next step is either the Headlamp desktop app with a local kubeconfig on an operator machine, or a separate web terminal service behind `oauth2-proxy` with tight RBAC and audit controls.
 
-`k8s.bit-habit.com`을 쓰려면 먼저 GitHub OAuth App이 있어야 합니다.
+For this repo specifically, `Headlamp` should be treated as the cluster UI with targeted pod exec, not as a replacement for a dedicated shell host.
 
-최소 설정값:
+## 15. GitHub OAuth Setup
 
-- Application name: `k8s-dashboard` 또는 비슷한 내부 이름
+To expose `k8s.bit-habit.com`, first create a GitHub OAuth App with:
+
+- Application name: `bit-habit-headlamp`
 - Homepage URL: `https://k8s.bit-habit.com`
 - Authorization callback URL: `https://k8s.bit-habit.com/oauth2/callback`
 
-그 다음 `oauth2-proxy-secret`를 만듭니다.
+Then create the Secret:
 
 ```bash
 COOKIE_SECRET=$(openssl rand -base64 32 | head -c 32)
 
 kubectl create secret generic oauth2-proxy-secret \
-  -n kubernetes-dashboard \
+  -n headlamp \
   --from-literal=cookie-secret="$COOKIE_SECRET" \
   --from-literal=client-id="YOUR_GITHUB_CLIENT_ID" \
   --from-literal=client-secret="YOUR_GITHUB_CLIENT_SECRET" \
   --dry-run=client -o yaml | kubectl apply -f -
 ```
 
-이미 운영 중인 secret 값을 바꾸려면 `apps/oauth2-proxy/update-secret.sh`를 사용합니다.
+To rotate the live Secret later:
 
 ```bash
 cd apps/oauth2-proxy
@@ -376,7 +378,9 @@ export OAUTH2_PROXY_CLIENT_SECRET='your-client-secret'
 ./update-secret.sh
 ```
 
-## 14. 기본 검증 방법
+## 16. Verification
+
+General cluster checks:
 
 ```bash
 kubectl get ns
@@ -385,45 +389,39 @@ kubectl get ingress -A
 kubectl get ingressroute -A
 ```
 
-Headlamp 확인:
+Headlamp and oauth2-proxy checks:
 
 ```bash
 kubectl get pods -n headlamp
 kubectl logs deploy/headlamp -n headlamp --tail=100
+kubectl logs deploy/oauth2-proxy -n headlamp --tail=100
 ```
 
-oauth2-proxy 확인:
+## 17. Beginner Gotchas
 
-```bash
-kubectl get pods -n kubernetes-dashboard
-kubectl logs deploy/oauth2-proxy -n kubernetes-dashboard --tail=100
-```
+### A `Service` is not the application itself
 
-## 15. 초보자가 자주 헷갈리는 지점
+The real containers are in `Deployment -> Pod`. A `Service` is the stable network front for them.
 
-### `Service`는 앱이 아니다
+### `Ingress` is only the front door
 
-`Service`는 트래픽을 받는 고정 이름이고, 실제 컨테이너는 `Deployment -> Pod`가 띄웁니다.
+`Ingress` decides where traffic goes. It does not run the application code.
 
-### `Ingress`는 입구일 뿐이다
+### `hostPath` couples workloads to one node
 
-`Ingress`는 도메인과 경로를 보고 어느 `Service`로 보낼지 결정합니다. 앱 로직은 `Ingress` 안에 없습니다.
+If you move a workload to another node without the same files and directories, it can break.
 
-### `hostPath`는 노드 디렉터리에 직접 의존한다
+### `bithabit-api` has two different operating modes
 
-앱을 다른 노드로 옮기면 같은 경로와 데이터가 없어서 깨질 수 있습니다.
+- `apps/bithabit-api/deployment.yaml` runs the API inside the cluster.
+- `apps/bithabit-api/service.yaml` forwards to an external IP `10.0.0.61:8002`.
 
-### `bithabit-api`는 두 가지 모드가 있다
+They both touch `bithabit-api-svc`, so do not apply both casually.
 
-- `apps/bithabit-api/deployment.yaml`: 클러스터 내부에 API를 직접 띄우는 방식
-- `apps/bithabit-api/service.yaml`: 외부 IP `10.0.0.61:8002`로 보내는 방식
+### `.disabled` files are not part of the normal apply path
 
-둘 다 같은 `bithabit-api-svc`를 다루므로, 의도 없이 함께 apply 하면 혼란이 생깁니다.
+They are examples or optional files. They are not active until you intentionally rename or copy them.
 
-### `.disabled` 파일은 기본적으로 적용 대상이 아니다
+## 18. One-Line Memory Aid
 
-파일명을 바꾸기 전까지는 일반적인 `kubectl apply -f ...` 대상이 아닙니다.
-
-## 16. 새로 들어온 사람이 기억해야 할 한 줄
-
-이 repo를 이해하는 가장 빠른 방법은 "`base/`는 입구, `apps/`는 실제 서비스, admin UI는 마지막"이라고 기억하는 것입니다.
+The simplest way to remember this repo is: `base/` is the front door, `apps/` is the runtime, and `Headlamp` sits behind `oauth2-proxy` for admin access.

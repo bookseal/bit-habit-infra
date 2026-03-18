@@ -4,12 +4,14 @@ GitHub SSO authentication for `k8s.bit-habit.com`
 
 ## Prerequisites
 
-1. Create GitHub OAuth App at https://github.com/settings/developers
-   - Application name: `k8s-dashboard`
+1. Apply `../headlamp/deployment.yaml` first so the `headlamp` namespace exists.
+
+2. Create GitHub OAuth App at https://github.com/settings/developers
+   - Application name: `bit-habit-headlamp`
    - Homepage URL: `https://k8s.bit-habit.com`
    - Callback URL: `https://k8s.bit-habit.com/oauth2/callback`
 
-2. Get Client ID and Client Secret
+3. Get Client ID and Client Secret
 
 ## Installation
 
@@ -19,7 +21,7 @@ COOKIE_SECRET=$(openssl rand -base64 32 | head -c 32)
 
 # 2. Create secret with actual values
 kubectl create secret generic oauth2-proxy-secret \
-  -n kubernetes-dashboard \
+  -n headlamp \
   --from-literal=cookie-secret="$COOKIE_SECRET" \
   --from-literal=client-id="YOUR_GITHUB_CLIENT_ID" \
   --from-literal=client-secret="YOUR_GITHUB_CLIENT_SECRET" \
@@ -30,9 +32,9 @@ kubectl apply -f deployment.yaml
 kubectl apply -f ingress.yaml
 
 # 4. Restart and inspect logs
-kubectl rollout restart deploy/oauth2-proxy -n kubernetes-dashboard
-kubectl rollout status deploy/oauth2-proxy -n kubernetes-dashboard
-kubectl logs deploy/oauth2-proxy -n kubernetes-dashboard --tail=100
+kubectl rollout restart deploy/oauth2-proxy -n headlamp
+kubectl rollout status deploy/oauth2-proxy -n headlamp
+kubectl logs deploy/oauth2-proxy -n headlamp --tail=100
 ```
 
 `deployment.yaml` does not include the Secret on purpose. This prevents
@@ -78,4 +80,4 @@ OAuth succeeds but the callback ends with `403 Forbidden`.
 1. Open `https://k8s.bit-habit.com/oauth2/start`
 2. Sign in with GitHub
 3. Confirm the browser lands on `https://k8s.bit-habit.com/`
-4. If it fails, inspect `kubectl logs deploy/oauth2-proxy -n kubernetes-dashboard --tail=100`
+4. If it fails, inspect `kubectl logs deploy/oauth2-proxy -n headlamp --tail=100`
