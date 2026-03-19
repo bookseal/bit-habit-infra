@@ -81,13 +81,13 @@ This server runs **k3s** — a lightweight version of Kubernetes.
 
 Think of Kubernetes like a **shipping port**:
 
-| Real world | This infra |
-|---|---|
-| The port itself | k3s (the cluster) |
-| Cranes and roads | Traefik (moves traffic in) |
-| Shipping containers | Docker containers (your apps) |
-| Cargo labels | Ingress rules (who goes where) |
-| Security gate | oauth2-proxy (login required) |
+| Real world          | This infra                     |
+| ------------------- | ------------------------------ |
+| The port itself     | k3s (the cluster)              |
+| Cranes and roads    | Traefik (moves traffic in)     |
+| Shipping containers | Docker containers (your apps)  |
+| Cargo labels        | Ingress rules (who goes where) |
+| Security gate       | oauth2-proxy (login required)  |
 
 The repo has two layers:
 
@@ -114,25 +114,25 @@ This is the k3s server config. It lives on the **host machine**, not inside Kube
 
 ```yaml
 # /etc/rancher/k3s/config.yaml
-write-kubeconfig-mode: "0644"   # let non-root users run kubectl
+write-kubeconfig-mode: "0644" # let non-root users run kubectl
 disable:
-  - servicelb                   # turn off the built-in load balancer
+  - servicelb # turn off the built-in load balancer
 tls-san:
-  - k8s.bit-habit.com           # add your domain to the API server TLS certificate
+  - k8s.bit-habit.com # add your domain to the API server TLS certificate
 node-label:
-  - "bit-habit.com/role=main"   # tag this node for scheduling
+  - "bit-habit.com/role=main" # tag this node for scheduling
 ```
 
 > **Current state:** this file does not exist on disk. k3s is running on its built-in defaults, which works fine for a single-node setup.
 
 #### Do you need this file?
 
-| Situation | Need config.yaml? |
-|---|---|
-| Simple local cluster, kubectl with sudo | No |
-| Run kubectl without sudo | Yes — `write-kubeconfig-mode: "0644"` |
-| Access the API from a public domain | Yes — add `tls-san` |
-| Replace the built-in load balancer | Yes — `disable: [servicelb]` |
+| Situation                               | Need config.yaml?                     |
+| --------------------------------------- | ------------------------------------- |
+| Simple local cluster, kubectl with sudo | No                                    |
+| Run kubectl without sudo                | Yes — `write-kubeconfig-mode: "0644"` |
+| Access the API from a public domain     | Yes — add `tls-san`                   |
+| Replace the built-in load balancer      | Yes — `disable: [servicelb]`          |
 
 ---
 
@@ -174,13 +174,13 @@ env:
   - name: database__connection__password
     valueFrom:
       secretKeyRef:
-        name: ghost-mysql-pass   # password is never written here directly
+        name: ghost-mysql-pass # password is never written here directly
         key: password
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: ghost-svc              # ← Ingress calls this name
+  name: ghost-svc # ← Ingress calls this name
 spec:
   ports:
     - port: 80
@@ -220,7 +220,7 @@ flowchart LR
 
 **DNS** is the internet's phone book. Every human-readable domain name like `blog.bit-habit.com` is mapped to a numeric **IP address** (Internet Protocol address — the actual address computers use to find each other on the network, e.g. `123.45.67.89`).
 
-When a user types `blog.bit-habit.com`, their browser asks DNS: *"what IP address is this domain pointing to?"* Route53 (Amazon's managed DNS service) answers with this server's public IP.
+When a user types `blog.bit-habit.com`, their browser asks DNS: _"what IP address is this domain pointing to?"_ Route53 (Amazon's managed DNS service) answers with this server's public IP.
 
 Route53 also plays a second role: **DNS-01 challenge**. When cert-manager wants to prove it controls `*.bit-habit.com`, it temporarily writes a TXT record in Route53. Let's Encrypt checks for that record and then issues the certificate.
 
@@ -265,9 +265,10 @@ A **certificate** is like a verified ID card for your domain. 🪪 It proves to 
 
 Traefik is a **reverse proxy**. It sits in front of all apps and decides where each request goes.
 
-A **proxy** is a middleman. A **reverse proxy** is a middleman on the *server side* — the browser talks to Traefik, and Traefik talks to the real app. Think of it like a hotel receptionist who takes all guest requests and routes them to the right room.
+A **proxy** is a middleman. A **reverse proxy** is a middleman on the _server side_ — the browser talks to Traefik, and Traefik talks to the real app. Think of it like a hotel receptionist who takes all guest requests and routes them to the right room.
 
 Traefik listens on:
+
 - `:80` — HTTP port, redirects everything to HTTPS automatically
 - `:443` — HTTPS port, handles real traffic after TLS termination
 
@@ -321,11 +322,11 @@ flowchart LR
 
 Think of it like this:
 
-| Object | Job |
-|---|---|
-| Deployment | "I want ghost running, always at version X, with 1 copy" |
+| Object     | Job                                                       |
+| ---------- | --------------------------------------------------------- |
+| Deployment | "I want ghost running, always at version X, with 1 copy"  |
 | ReplicaSet | "OK, I will make sure exactly 1 Pod is running right now" |
-| Pod | Actually running the container |
+| Pod        | Actually running the container                            |
 
 ---
 
@@ -356,7 +357,7 @@ flowchart LR
 
 An Ingress is a set of routing rules for **external HTTP/HTTPS traffic**.
 
-It does not run anything. It just says: *"if the hostname is X and the path is Y, send to Service Z."* Traefik reads these rules and acts on them.
+It does not run anything. It just says: _"if the hostname is X and the path is Y, send to Service Z."_ Traefik reads these rules and acts on them.
 
 ```yaml
 rules:
@@ -396,7 +397,7 @@ When a request hits `ghost-svc:80`, something in the Linux kernel needs to redir
 
 **netfilter** is a framework built into the Linux kernel that can inspect and modify network packets as they move through the system. Think of it as a set of hooks in the kernel where you can run code on every packet.
 
-**iptables** is a tool that writes rules to netfilter. It says things like: *"any packet going to 10.43.x.x:80 — rewrite the destination to 10.42.0.5:2368"*.
+**iptables** is a tool that writes rules to netfilter. It says things like: _"any packet going to 10.43.x.x:80 — rewrite the destination to 10.42.0.5:2368"_.
 
 In standard Kubernetes, `kube-proxy` writes these iptables rules for every Service. In k3s, `kube-proxy` is replaced by a lightweight alternative that does the same job.
 
@@ -470,6 +471,7 @@ cert-manager is a Kubernetes add-on that **automatically manages TLS certificate
 **Let's Encrypt** is a free, non-profit certificate authority (CA). A CA is a trusted organisation that digitally signs your certificate, so browsers know it is genuine. Let's Encrypt issues certificates to anyone who can **prove they control the domain**.
 
 There are two ways to prove domain ownership:
+
 - **HTTP-01** — Let's Encrypt checks a specific **URL** (Uniform Resource Locator — a full web address including the path, e.g. `https://bit-habit.com/.well-known/acme-challenge/...`) on your server
 - **DNS-01** — Let's Encrypt checks a TXT record in your DNS zone (used here, because only DNS-01 supports wildcard certificates like `*.bit-habit.com`)
 
@@ -503,8 +505,8 @@ Certificates expire every 90 days. cert-manager renews them automatically before
 
 These two words are often confused. They mean different things:
 
-- 🪪 **Authentication (AuthN)** — *Who are you?* Prove your identity. (e.g. show your passport)
-- 🛡️ **Authorization (AuthZ)** — *What can you do?* After I know who you are, what are you allowed to touch? (e.g. this passport lets you into Economy class only)
+- 🪪 **Authentication (AuthN)** — _Who are you?_ Prove your identity. (e.g. show your passport)
+- 🛡️ **Authorization (AuthZ)** — _What can you do?_ After I know who you are, what are you allowed to touch? (e.g. this passport lets you into Economy class only)
 
 This cluster uses both for the admin UI.
 
@@ -545,13 +547,13 @@ After GitHub OAuth lets you into the browser, Headlamp talks to the Kubernetes A
 
 The main RBAC objects:
 
-| Object | What it does |
-|---|---|
-| `ServiceAccount` | An identity for a Pod or app (like a user account, but for services) |
-| `Role` | A list of allowed actions in one namespace (e.g. "can read Pods in headlamp") |
-| `ClusterRole` | Same, but across all namespaces |
-| `RoleBinding` | Connects a Role to a ServiceAccount |
-| `ClusterRoleBinding` | Connects a ClusterRole to a ServiceAccount |
+| Object               | What it does                                                                  |
+| -------------------- | ----------------------------------------------------------------------------- |
+| `ServiceAccount`     | An identity for a Pod or app (like a user account, but for services)          |
+| `Role`               | A list of allowed actions in one namespace (e.g. "can read Pods in headlamp") |
+| `ClusterRole`        | Same, but across all namespaces                                               |
+| `RoleBinding`        | Connects a Role to a ServiceAccount                                           |
+| `ClusterRoleBinding` | Connects a ClusterRole to a ServiceAccount                                    |
 
 Example mental model:
 
@@ -576,6 +578,7 @@ ServiceAccount: headlamp
 Every time you run `kubectl apply -f deployment.yaml`, your manifest is stored in etcd. The Kubernetes control plane reads from etcd to know what should be running, and writes to etcd whenever the state changes.
 
 What lives in etcd:
+
 - All Deployment, Service, Ingress, Pod, Secret definitions
 - Cluster configuration
 - RBAC rules
@@ -624,6 +627,7 @@ flowchart LR
 ```
 
 Benefits:
+
 - Every change is tracked in Git history — you know who changed what and when
 - Rolling back is `git revert` + push
 - The cluster state always matches what is in the repo
@@ -663,17 +667,31 @@ flowchart TD
     H -->|"ServiceAccount + RBAC"| K["Kubernetes API / etcd"]
 ```
 
+#### 🗺️ Live cluster map — what it looks like in Headlamp
+
+This is the actual cluster state visualised by **Headlamp** (`k8s.bit-habit.com`), grouped by Namespace.
+
+![Headlamp cluster map](assets/headlamp-cluster-map.png)
+
+| Namespace              | What lives here                                                                                                    |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| `kube-system`          | k3s system components — `traefik` (ingress), `coredns` (DNS), `metrics-server`, `local-path-provisioner` (storage) |
+| `default`              | Most public apps — `booktoss`, `ghost-mysql`, `ghost`, `wikijs`, `bithabit-api`, `static-web`, etc.                |
+| `cert-manager`         | `cert-manager` and its webhook — responsible for issuing and renewing TLS certificates                             |
+| `kubernetes-dashboard` | `oauth2-proxy` (GitHub login gate) and `dashboard-metrics-scraper`                                                 |
+| `headlamp`             | `headlamp` itself — the admin UI you are looking at                                                                |
+
 ---
 
 ## 5. 🧠 Understand in 1000 minutes
 
-You understand the core concepts. These questions are worth sitting with — organized by topic. Each section includes a short *context* note so you know what you already know before you ask.
+You understand the core concepts. These questions are worth sitting with — organized by topic. Each section includes a short _context_ note so you know what you already know before you ask.
 
 ---
 
 ### 5.1 🖥️ Cluster and node questions
 
-> *You know: k3s runs on one Ubuntu server. etcd (SQLite) stores cluster state. Pods keep running if etcd is lost, but will not restart.*
+> _You know: k3s runs on one Ubuntu server. etcd (SQLite) stores cluster state. Pods keep running if etcd is lost, but will not restart._
 
 - What happens to all running Pods if the single node shuts down? How does a multi-node setup change the answer?
 - What does `systemctl restart k3s` actually do to running workloads?
@@ -685,7 +703,7 @@ You understand the core concepts. These questions are worth sitting with — org
 
 ### 5.2 🕸️ Networking questions
 
-> *You know: Services get a stable clusterIP. netfilter/iptables rewrites packet destinations. k3s replaces kube-proxy.*
+> _You know: Services get a stable clusterIP. netfilter/iptables rewrites packet destinations. k3s replaces kube-proxy._
 
 - When a Pod calls `ghost-svc:80`, how does DNS inside the cluster resolve `ghost-svc` to `10.43.x.x`? What is CoreDNS?
 - What is the difference between `ClusterIP`, `NodePort`, and `LoadBalancer` Service types? When would you use each?
@@ -697,7 +715,7 @@ You understand the core concepts. These questions are worth sitting with — org
 
 ### 5.3 🔒 TLS and certificates questions
 
-> *You know: cert-manager does DNS-01 via Route53. Wildcard certificate stored in tls-secret. Traefik terminates TLS. Certs expire every 90 days and auto-renew.*
+> _You know: cert-manager does DNS-01 via Route53. Wildcard certificate stored in tls-secret. Traefik terminates TLS. Certs expire every 90 days and auto-renew._
 
 - What is the difference between a wildcard certificate and individual per-domain certificates? What are the security trade-offs?
 - What IAM permissions does `route53-credentials-secret` need? What is the **principle of least privilege** and why does it matter here?
@@ -709,7 +727,7 @@ You understand the core concepts. These questions are worth sitting with — org
 
 ### 5.4 🛡️ Security and RBAC questions
 
-> *You know: oauth2-proxy handles authentication via GitHub OAuth. RBAC controls what the Headlamp ServiceAccount can do. Authentication = who are you, Authorization = what can you do.*
+> _You know: oauth2-proxy handles authentication via GitHub OAuth. RBAC controls what the Headlamp ServiceAccount can do. Authentication = who are you, Authorization = what can you do._
 
 - What is the difference between a `Role` and a `ClusterRole`? When would you use one over the other?
 - How would you audit what the Headlamp ServiceAccount is currently allowed to do? What `kubectl` command shows this?
@@ -721,7 +739,7 @@ You understand the core concepts. These questions are worth sitting with — org
 
 ### 5.5 📊 Observability questions
 
-> *You know: you can check logs with `kubectl logs` and Pod status with `kubectl get pods -A`.*
+> _You know: you can check logs with `kubectl logs` and Pod status with `kubectl get pods -A`._
 
 - Logs disappear when a Pod restarts. How would you set up **persistent log aggregation**? (Look into: Loki + Promtail, or Elasticsearch + Fluentd.)
 - How would you know if `ghost-svc` is responding slowly? What does a basic metrics stack look like for k3s? (Look into: Prometheus + Grafana.)
@@ -733,7 +751,7 @@ You understand the core concepts. These questions are worth sitting with — org
 
 ### 5.6 🔀 CI/CD and GitOps questions
 
-> *You know: GitOps means Git is the source of truth. Argo CD / Flux watch a repo and auto-apply changes. This repo is structured for GitOps but applies manifests manually today.*
+> _You know: GitOps means Git is the source of truth. Argo CD / Flux watch a repo and auto-apply changes. This repo is structured for GitOps but applies manifests manually today._
 
 - What does `kubectl rollout undo deployment/ghost` do? How does Kubernetes know what to roll back to?
 - What is the difference between **Recreate** and **RollingUpdate** deployment strategies? Which apps here can tolerate brief downtime, and which cannot?
@@ -745,7 +763,7 @@ You understand the core concepts. These questions are worth sitting with — org
 
 ### 5.7 📈 Scaling and reliability questions
 
-> *You know: most apps run 1 replica. Services do round-robin load balancing across replicas. hostPath ties workloads to one node.*
+> _You know: most apps run 1 replica. Services do round-robin load balancing across replicas. hostPath ties workloads to one node._
 
 - None of the apps here define resource `requests` or `limits`. What happens if Ghost consumes all available memory on the node?
 - What is a **PodDisruptionBudget**, and why does it matter even on a single-node cluster during maintenance?
