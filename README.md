@@ -216,11 +216,13 @@ flowchart LR
 
 ---
 
-#### 4.1.1 DNS — Route53
+#### 4.1.1 🌐 DNS (Domain Name System) — Route53
 
-When a user types `blog.bit-habit.com`, their browser asks DNS: *"what IP is this?"* Route53 answers with the server's public IP.
+**DNS** is the internet's phone book. Every human-readable domain name like `blog.bit-habit.com` is mapped to a numeric **IP address** (Internet Protocol address — the actual address computers use to find each other on the network, e.g. `123.45.67.89`).
 
-Route53 also plays a second role: **DNS-01 TLS challenge**. When cert-manager wants to prove it controls `*.bit-habit.com`, it temporarily writes a TXT record in Route53. Let's Encrypt checks for that record and then issues the certificate.
+When a user types `blog.bit-habit.com`, their browser asks DNS: *"what IP address is this domain pointing to?"* Route53 (Amazon's managed DNS service) answers with this server's public IP.
+
+Route53 also plays a second role: **DNS-01 challenge**. When cert-manager wants to prove it controls `*.bit-habit.com`, it temporarily writes a TXT record in Route53. Let's Encrypt checks for that record and then issues the certificate.
 
 ```mermaid
 sequenceDiagram
@@ -236,16 +238,18 @@ sequenceDiagram
 
 ---
 
-#### 4.1.2 TLS — what HTTPS actually means here
+#### 4.1.2 🔒 TLS (Transport Layer Security) — what HTTPS actually means here
 
-TLS is the technology behind the `S` in HTTPS. It encrypts traffic between the browser and the server so nobody in the middle can read it.
+**TLS** (Transport Layer Security) is the encryption technology behind the `S` in **HTTPS** (HyperText Transfer Protocol Secure). Think of it like sealing a letter in an envelope — without TLS the network traffic is a postcard anyone can read; with TLS it is sealed so only the sender and recipient can open it.
+
+> **HTTP** (HyperText Transfer Protocol) is the base language browsers and servers use to talk to each other. **HTTPS** = HTTP + TLS encryption on top.
 
 How it works here:
 
-- cert-manager requests a **wildcard certificate** (`*.bit-habit.com`) from Let's Encrypt
+- cert-manager 🤖 automatically requests a **wildcard certificate** (`*.bit-habit.com`) from Let's Encrypt
 - The certificate is stored in a Kubernetes `Secret` called `tls-secret`
-- Traefik reads `tls-secret` and handles TLS at the edge — this is called **TLS termination**
-- Traffic **inside the cluster** (Traefik → Pod) travels over the internal network without TLS
+- Traefik reads `tls-secret` and handles TLS at the edge — this step is called **TLS termination** (Traefik unwraps the encryption here so Pods don't have to)
+- Traffic **inside the cluster** (Traefik → Pod) travels over the internal network without TLS since it never leaves the server
 
 ```
 Browser ──[HTTPS encrypted]──► Traefik ──[HTTP plain]──► Pod
@@ -253,27 +257,27 @@ Browser ──[HTTPS encrypted]──► Traefik ──[HTTP plain]──► Pod
                           tls-secret lives here
 ```
 
-A **certificate** is like a verified ID card for your domain. It proves to the browser that `blog.bit-habit.com` is really your server and not someone pretending to be you.
+A **certificate** is like a verified ID card for your domain. 🪪 It proves to the browser that `blog.bit-habit.com` is really your server and not someone pretending to be you.
 
 ---
 
-#### 4.1.3 Traefik — the ingress controller
+#### 4.1.3 🚦 Traefik — the ingress controller
 
 Traefik is a **reverse proxy**. It sits in front of all apps and decides where each request goes.
 
-A **proxy** is a middleman. A **reverse proxy** is a middleman on the *server side* — the browser talks to Traefik, and Traefik talks to the real app.
+A **proxy** is a middleman. A **reverse proxy** is a middleman on the *server side* — the browser talks to Traefik, and Traefik talks to the real app. Think of it like a hotel receptionist who takes all guest requests and routes them to the right room.
 
 Traefik listens on:
-- `:80` — redirects everything to HTTPS
-- `:443` — handles real traffic after TLS termination
+- `:80` — HTTP port, redirects everything to HTTPS automatically
+- `:443` — HTTPS port, handles real traffic after TLS termination
 
-When you `kubectl apply` a new Ingress, Traefik picks it up automatically without restarting. This is because it watches the Kubernetes API for changes.
+When you `kubectl apply` a new Ingress, Traefik picks it up automatically without restarting. This is because it watches the Kubernetes **API** (Application Programming Interface — the communication channel through which all parts of the cluster exchange information and instructions) for changes in real time.
 
 ---
 
-### 4.2 Kubernetes core objects
+### 4.2 ☸️ Kubernetes core objects
 
-#### 4.2.1 Pod
+#### 4.2.1 📦 Pod
 
 A Pod is the smallest unit in Kubernetes. It is one (or a few) running containers.
 
@@ -289,7 +293,7 @@ Pods are **temporary**. If a Pod crashes, Kubernetes starts a new one — but it
 
 ---
 
-#### 4.2.2 ReplicaSet
+#### 4.2.2 🔄 ReplicaSet
 
 A ReplicaSet makes sure a given number of identical Pods are always running.
 
@@ -302,7 +306,7 @@ If the Pod crashes, the ReplicaSet creates a new one immediately. You rarely cre
 
 ---
 
-#### 4.2.3 Deployment
+#### 4.2.3 🚀 Deployment
 
 A Deployment manages a ReplicaSet and adds **rolling updates**.
 
@@ -325,7 +329,7 @@ Think of it like this:
 
 ---
 
-#### 4.2.4 Service
+#### 4.2.4 🔌 Service
 
 A Service gives a **stable internal name and IP** to a set of Pods.
 
@@ -348,7 +352,7 @@ flowchart LR
 
 ---
 
-#### 4.2.5 Ingress
+#### 4.2.5 🚪 Ingress
 
 An Ingress is a set of routing rules for **external HTTP/HTTPS traffic**.
 
@@ -368,7 +372,7 @@ rules:
 
 ---
 
-#### 4.2.6 Middleware — the `/api/` case
+#### 4.2.6 ⚙️ Middleware — the `/api/` case
 
 `habit.bit-habit.com/api/` needs special handling. The backend API expects requests at `/`, not `/api/`.
 
@@ -384,9 +388,9 @@ This middleware is attached to a **separate Ingress object** (`habit-api-ingress
 
 ---
 
-### 4.3 Networking internals
+### 4.3 🕸️ Networking internals
 
-#### 4.3.1 How Services actually work — iptables and netfilter
+#### 4.3.1 🔧 How Services actually work — iptables and netfilter
 
 When a request hits `ghost-svc:80`, something in the Linux kernel needs to redirect it to the actual Pod IP. This is done by **iptables** and **netfilter**.
 
@@ -406,7 +410,7 @@ You do not need to manage iptables manually. Kubernetes handles this every time 
 
 ---
 
-#### 4.3.2 Load balancing in this cluster
+#### 4.3.2 ⚖️ Load balancing in this cluster
 
 In this cluster, most apps run with **1 replica**, so there is no load balancing across multiple Pods.
 
@@ -423,7 +427,7 @@ k3s includes a built-in load balancer called `servicelb`. It is disabled in `con
 
 ---
 
-#### 4.3.3 Ports — which port does what
+#### 4.3.3 🔢 Ports — which port does what
 
 It is easy to get confused by all the port numbers. Here is the map:
 
@@ -439,9 +443,9 @@ Each layer uses its own port. The Service translates between them.
 
 ---
 
-### 4.4 Storage
+### 4.4 💾 Storage
 
-#### 4.4.1 hostPath volumes — the simple trade-off
+#### 4.4.1 📁 hostPath volumes — the simple trade-off
 
 Most apps here store data in a `hostPath` volume — a directory on the host machine mounted directly into the container.
 
@@ -459,19 +463,19 @@ For a **single-node cluster** like this one, hostPath is perfectly fine. For mul
 
 ---
 
-### 4.5 Certificates — cert-manager and Let's Encrypt
+### 4.5 📜 Certificates — cert-manager and Let's Encrypt
 
-cert-manager is a Kubernetes add-on that **automatically manages TLS certificates**. Without it, you would have to manually request, renew, and deploy certificates yourself.
+cert-manager is a Kubernetes add-on that **automatically manages TLS certificates**. Without it, you would have to manually request, renew, and deploy certificates yourself — a tedious and error-prone task.
 
-Let's Encrypt is a free certificate authority. It issues certificates to anyone who can **prove they control the domain**.
+**Let's Encrypt** is a free, non-profit certificate authority (CA). A CA is a trusted organisation that digitally signs your certificate, so browsers know it is genuine. Let's Encrypt issues certificates to anyone who can **prove they control the domain**.
 
-There are two ways to prove this:
-- **HTTP-01** — Let's Encrypt checks a specific URL on your server
-- **DNS-01** — Let's Encrypt checks a TXT record in your DNS (used here, because we need a wildcard certificate)
+There are two ways to prove domain ownership:
+- **HTTP-01** — Let's Encrypt checks a specific **URL** (Uniform Resource Locator — a full web address including the path, e.g. `https://bit-habit.com/.well-known/acme-challenge/...`) on your server
+- **DNS-01** — Let's Encrypt checks a TXT record in your DNS zone (used here, because only DNS-01 supports wildcard certificates like `*.bit-habit.com`)
 
 ---
 
-#### 4.5.1 DNS-01 challenge — step by step
+#### 4.5.1 🔐 DNS-01 challenge — step by step
 
 ```mermaid
 sequenceDiagram
@@ -495,18 +499,18 @@ Certificates expire every 90 days. cert-manager renews them automatically before
 
 ---
 
-### 4.6 Authentication and authorization
+### 4.6 🔐 Authentication and Authorization
 
 These two words are often confused. They mean different things:
 
-- **Authentication** — *Who are you?* Prove your identity.
-- **Authorization** — *What can you do?* After I know who you are, what are you allowed to touch?
+- 🪪 **Authentication (AuthN)** — *Who are you?* Prove your identity. (e.g. show your passport)
+- 🛡️ **Authorization (AuthZ)** — *What can you do?* After I know who you are, what are you allowed to touch? (e.g. this passport lets you into Economy class only)
 
 This cluster uses both for the admin UI.
 
 ---
 
-#### 4.6.1 oauth2-proxy — who can open the browser tab
+#### 4.6.1 🔑 oauth2-proxy — who can open the browser tab
 
 `k8s.bit-habit.com` (the Headlamp admin UI) must not be open to the public.
 
@@ -529,11 +533,11 @@ sequenceDiagram
     H-->>U: Show admin UI ✓
 ```
 
-**OAuth** is a standard protocol that lets a third-party service (GitHub) confirm your identity without you sharing your password with the site you are logging into. It is the same system used by "Login with Google" buttons.
+**OAuth** (Open Authorization) is an open standard protocol that lets a third-party service (GitHub) confirm your identity without you sharing your password with the site you are logging into. It is the same system used by "Login with Google" or "Login with Apple" buttons everywhere on the web. 🔗
 
 ---
 
-#### 4.6.2 RBAC — what Headlamp can do once inside
+#### 4.6.2 🛡️ RBAC (Role-Based Access Control) — what Headlamp can do once inside
 
 **RBAC** stands for **Role-Based Access Control**. It is Kubernetes's system for controlling what each user or service is allowed to do inside the cluster.
 
@@ -563,9 +567,9 @@ ServiceAccount: headlamp
 
 ---
 
-### 4.7 The cluster's data store — etcd
+### 4.7 🗄️ The cluster's data store — etcd
 
-#### 4.7.1 What etcd stores
+#### 4.7.1 📋 What etcd stores
 
 **etcd** is the database of Kubernetes. It stores the **entire desired state of the cluster** as key-value pairs.
 
@@ -589,7 +593,7 @@ k3s uses **SQLite** by default instead of a full etcd cluster, to keep things li
 
 ---
 
-#### 4.7.2 What happens if etcd is lost
+#### 4.7.2 ⚠️ What happens if etcd is lost
 
 If etcd (or the SQLite file in k3s) is deleted or corrupted:
 
@@ -602,13 +606,15 @@ This is why etcd backup is critical in production. On this single-node k3s setup
 
 ---
 
-### 4.8 GitOps — what it means and why it matters
+### 4.8 🔀 GitOps — what it means and why it matters
 
-#### 4.8.1 What GitOps is
+#### 4.8.1 💡 What GitOps is
 
 **GitOps** is a way of managing infrastructure where **Git is the single source of truth**.
 
 Instead of running `kubectl apply` by hand, you commit your manifests to a Git repo. A tool (like **Argo CD** or **Flux**) watches the repo and automatically applies any changes to the cluster.
+
+> **CI/CD** stands for **Continuous Integration / Continuous Delivery** — the practice of automatically building, testing, and deploying code every time you push a change. GitOps is the infrastructure equivalent of CI/CD.
 
 ```mermaid
 flowchart LR
@@ -625,7 +631,7 @@ Benefits:
 
 ---
 
-#### 4.8.2 How this repo relates to GitOps
+#### 4.8.2 🗺️ How this repo relates to GitOps
 
 This repo is **not yet using GitOps tooling** like Argo CD or Flux. Manifests are still applied manually with `kubectl apply`.
 
@@ -635,7 +641,7 @@ Adding GitOps tooling later would be a natural next step. The repo layout is alr
 
 ---
 
-### 4.9 The complete picture
+### 4.9 🖼️ The complete picture
 
 ```mermaid
 flowchart TD
@@ -665,7 +671,7 @@ You understand the core concepts. These questions are worth sitting with — org
 
 ---
 
-### 5.1 Cluster and node questions
+### 5.1 🖥️ Cluster and node questions
 
 > *You know: k3s runs on one Ubuntu server. etcd (SQLite) stores cluster state. Pods keep running if etcd is lost, but will not restart.*
 
@@ -677,7 +683,7 @@ You understand the core concepts. These questions are worth sitting with — org
 
 ---
 
-### 5.2 Networking questions
+### 5.2 🕸️ Networking questions
 
 > *You know: Services get a stable clusterIP. netfilter/iptables rewrites packet destinations. k3s replaces kube-proxy.*
 
@@ -689,7 +695,7 @@ You understand the core concepts. These questions are worth sitting with — org
 
 ---
 
-### 5.3 TLS and certificates questions
+### 5.3 🔒 TLS and certificates questions
 
 > *You know: cert-manager does DNS-01 via Route53. Wildcard certificate stored in tls-secret. Traefik terminates TLS. Certs expire every 90 days and auto-renew.*
 
@@ -701,7 +707,7 @@ You understand the core concepts. These questions are worth sitting with — org
 
 ---
 
-### 5.4 Security and RBAC questions
+### 5.4 🛡️ Security and RBAC questions
 
 > *You know: oauth2-proxy handles authentication via GitHub OAuth. RBAC controls what the Headlamp ServiceAccount can do. Authentication = who are you, Authorization = what can you do.*
 
@@ -713,7 +719,7 @@ You understand the core concepts. These questions are worth sitting with — org
 
 ---
 
-### 5.5 Observability questions
+### 5.5 📊 Observability questions
 
 > *You know: you can check logs with `kubectl logs` and Pod status with `kubectl get pods -A`.*
 
@@ -725,7 +731,7 @@ You understand the core concepts. These questions are worth sitting with — org
 
 ---
 
-### 5.6 CI/CD and GitOps questions
+### 5.6 🔀 CI/CD and GitOps questions
 
 > *You know: GitOps means Git is the source of truth. Argo CD / Flux watch a repo and auto-apply changes. This repo is structured for GitOps but applies manifests manually today.*
 
@@ -737,7 +743,7 @@ You understand the core concepts. These questions are worth sitting with — org
 
 ---
 
-### 5.7 Scaling and reliability questions
+### 5.7 📈 Scaling and reliability questions
 
 > *You know: most apps run 1 replica. Services do round-robin load balancing across replicas. hostPath ties workloads to one node.*
 
@@ -749,7 +755,7 @@ You understand the core concepts. These questions are worth sitting with — org
 
 ---
 
-### 5.8 The questions that will take the longest
+### 5.8 🏔️ The questions that will take the longest
 
 These do not have quick answers. Write them down. Come back in a few months.
 
