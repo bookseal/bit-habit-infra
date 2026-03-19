@@ -8,6 +8,23 @@
 
 ---
 
+### 👀 This is what you are looking at
+
+This is a **live screenshot** of the cluster, taken from the Headlamp admin UI.
+Every box is something actually running on this server right now.
+
+![Headlamp cluster map](assets/headlamp-cluster-map.png)
+
+| Namespace              | What lives here                                                                |
+| ---------------------- | ------------------------------------------------------------------------------ |
+| `kube-system`          | k3s internals — `traefik` (traffic routing), `coredns` (DNS), `metrics-server` |
+| `default`              | Public apps — `booktoss`, `ghost`, `wikijs`, `bithabit-api`, and more          |
+| `cert-manager`         | Automatic HTTPS certificate issuer                                             |
+| `kubernetes-dashboard` | `oauth2-proxy` — the GitHub login gate for the admin UI                        |
+| `headlamp`             | Headlamp itself — the dashboard that produced this screenshot                  |
+
+**Want to understand what all of this means?** Start at section 1 and read as far as you like. ↓
+
 ## Table of Contents
 
 - [1. ⚡ Understand in 10 seconds](#1--understand-in-10-seconds)
