@@ -1,4 +1,21 @@
-# Ghost MySQL Database
+# =============================================================================
+# apps/ghost/deployment.yaml  –  Ghost CMS + MySQL on k3s
+#
+# Two Deployments in one file:
+#   1. ghost-mysql  – MySQL 8.0 database used by Ghost
+#   2. ghost        – Ghost 5 CMS application (blog.bit-habit.com)
+#
+# Both use hostPath volumes so data (DB files, blog content) persists on the
+# host even if pods are restarted.
+#
+# Credentials are loaded from a Kubernetes Secret named "ghost-mysql-pass".
+# Create that Secret out-of-band:
+#   kubectl create secret generic ghost-mysql-pass \
+#     --from-literal=password=<MYSQL_PASSWORD> \
+#     --from-literal=root-password=<ROOT_PASSWORD>
+# =============================================================================
+
+# ---- 1. MySQL database for Ghost ----------------------------------------
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -17,12 +34,12 @@ spec:
       containers:
         - name: mysql
           image: docker.io/library/mysql:8.0
-          imagePullPolicy: Never
+          imagePullPolicy: Never # Use the locally cached image
           ports:
             - containerPort: 3306
           env:
             - name: MYSQL_DATABASE
-              value: ghost_prod
+              value: ghost_prod # Database name Ghost will use
             - name: MYSQL_USER
               value: ghost
             - name: MYSQL_PASSWORD
@@ -37,19 +54,20 @@ spec:
                   key: root-password
           volumeMounts:
             - name: mysql-data
-              mountPath: /var/lib/mysql
+              mountPath: /var/lib/mysql # MySQL data directory
             - name: init-sql
-              mountPath: /docker-entrypoint-initdb.d
+              mountPath: /docker-entrypoint-initdb.d # SQL files run on first startup
       volumes:
         - name: mysql-data
           hostPath:
-            path: /home/ubuntu/workspace/ghost-data/mysql
+            path: /home/ubuntu/workspace/ghost-data/mysql # Persisted on host
             type: DirectoryOrCreate
         - name: init-sql
           hostPath:
             path: /home/ubuntu/workspace/ghost-data/initdb
             type: DirectoryOrCreate
 ---
+# Internal ClusterIP service so the Ghost pod can reach MySQL
 apiVersion: v1
 kind: Service
 metadata:
@@ -63,7 +81,7 @@ spec:
     - port: 3306
       targetPort: 3306
 ---
-# Ghost CMS Application
+# ---- 2. Ghost CMS application -------------------------------------------
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -82,16 +100,16 @@ spec:
       containers:
         - name: ghost
           image: docker.io/library/ghost:5-alpine
-          imagePullPolicy: Never
+          imagePullPolicy: Never # Use the locally cached image
           ports:
-            - containerPort: 2368
+            - containerPort: 2368 # Ghost's default HTTP port
           env:
             - name: url
-              value: https://blog.bit-habit.com
+              value: https://blog.bit-habit.com # Public URL Ghost uses for links/redirects
             - name: database__client
               value: mysql
             - name: database__connection__host
-              value: ghost-mysql-svc
+              value: ghost-mysql-svc # In-cluster Service name for MySQL
             - name: database__connection__port
               value: "3306"
             - name: database__connection__user
@@ -107,13 +125,14 @@ spec:
               value: production
           volumeMounts:
             - name: content
-              mountPath: /var/lib/ghost/content
+              mountPath: /var/lib/ghost/content # Images, themes, and other Ghost content
       volumes:
         - name: content
           hostPath:
-            path: /home/ubuntu/workspace/ghost-data/content
+            path: /home/ubuntu/workspace/ghost-data/content # Persisted on host
             type: Directory
 ---
+# Internal ClusterIP service exposed to Traefik via base/ingress.yaml
 apiVersion: v1
 kind: Service
 metadata:
@@ -124,5 +143,5 @@ spec:
   selector:
     app: ghost
   ports:
-    - port: 80
-      targetPort: 2368
+    - port: 80 # Cluster-internal port
+      targetPort: 2368 # Ghost's actual listening port

@@ -1,18 +1,30 @@
+# =============================================================================
+# base/cert-manager/cluster-issuer.yaml  –  Let's Encrypt ClusterIssuer
+#
+# Tells cert-manager HOW to obtain TLS certificates cluster-wide.
+#
+# Method: DNS-01 challenge via AWS Route 53.
+#   - cert-manager creates a temporary TXT record in Route 53 to prove
+#     ownership of *.bit-habit.com.
+#   - This is the only way to issue wildcard certificates with Let's Encrypt.
+#   - The AWS credentials (access key + secret) allow cert-manager to
+#     create/delete those TXT records automatically.
+# =============================================================================
 apiVersion: cert-manager.io/v1
 kind: ClusterIssuer
 metadata:
-  name: letsencrypt-prod
+  name: letsencrypt-prod # Referenced by Certificate and Ingress annotations
 spec:
   acme:
-    server: https://acme-v02.api.letsencrypt.org/directory
-    email: admin@bit-habit.com
+    server: https://acme-v02.api.letsencrypt.org/directory # Let's Encrypt production ACME endpoint
+    email: admin@bit-habit.com # Contact email for cert expiry notices
     privateKeySecretRef:
-      name: letsencrypt-prod-account-key
+      name: letsencrypt-prod-account-key # Stores the ACME account private key
     solvers:
-    - dns01:
-        route53:
-          region: us-east-1
-          accessKeyID: AKIA47CRULZBKWCQ3AWJ
-          secretAccessKeySecretRef:
-            name: route53-credentials-secret
-            key: secret-access-key
+      - dns01:
+          route53:
+            region: us-east-1 # AWS region hosting the Route 53 hosted zone
+            accessKeyID: AKIA47CRULZBKWCQ3AWJ
+            secretAccessKeySecretRef:
+              name: route53-credentials-secret # Secret defined in aws-secret.yaml
+              key: secret-access-key

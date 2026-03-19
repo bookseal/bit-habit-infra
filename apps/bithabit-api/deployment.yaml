@@ -1,3 +1,14 @@
+# =============================================================================
+# apps/bithabit-api/deployment.yaml  –  Habit Tracker FastAPI Backend
+#
+# Runs a local Docker image (built on-host, never pulled from a registry).
+# Data (SQLite DB + uploaded files) is stored on the host filesystem under
+# /home/ubuntu/workspace/bithabit_api/data and mounted into the container,
+# so data survives pod restarts.
+#
+# Exposed internally as "bithabit-api-svc" (port 80 → container 8000).
+# External access:  https://habit.bit-habit.com/api/* (see base/ingress.yaml)
+# =============================================================================
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -16,23 +27,27 @@ spec:
       containers:
         - name: bithabit-api
           image: docker.io/library/bithabit-api:latest
-          imagePullPolicy: Never
+          imagePullPolicy: Never # Use the locally built image; do not pull from Docker Hub
           ports:
             - containerPort: 8000
           volumeMounts:
             - name: data
-              mountPath: /app/data
+              mountPath: /app/data # Where the app reads/writes its SQLite DB and uploads
           env:
             - name: DB_PATH
-              value: /app/data/bithabit.db
+              value: /app/data/bithabit.db # SQLite database file path inside the container
             - name: UPLOAD_DIR
-              value: /app/data/uploads
+              value: /app/data/uploads # Directory for user-uploaded files
       volumes:
         - name: data
           hostPath:
-            path: /home/ubuntu/workspace/bithabit_api/data
+            path: /home/ubuntu/workspace/bithabit_api/data # Host folder persisted across restarts
             type: DirectoryOrCreate
 ---
+# =============================================================================
+# Service:  bithabit-api-svc
+# ClusterIP service so only in-cluster resources (Traefik) can reach the API.
+# =============================================================================
 apiVersion: v1
 kind: Service
 metadata:
@@ -43,5 +58,5 @@ spec:
   selector:
     app: bithabit-api
   ports:
-    - port: 80
-      targetPort: 8000
+    - port: 80 # Port exposed inside the cluster
+      targetPort: 8000 # Port FastAPI listens on inside the container

@@ -1,3 +1,16 @@
+# =============================================================================
+# base/middlewares/strip-api-middleware.yaml  –  Traefik StripPrefix Middleware
+#
+# When a request arrives at habit.bit-habit.com/api/..., Traefik strips the
+# /api prefix before forwarding to the bithabit-api Service.
+#
+# Why?  The FastAPI backend is mounted at /, not /api/.  Without this
+# middleware the backend would receive /api/todos instead of /todos and
+# return 404 for every route.
+#
+# Referenced by:  base/ingress.yaml → habit-api-ingress annotation
+#   traefik.ingress.kubernetes.io/router.middlewares: default-strip-api-prefix@kubernetescrd
+# =============================================================================
 apiVersion: traefik.io/v1alpha1
 kind: Middleware
 metadata:
@@ -6,4 +19,4 @@ metadata:
 spec:
   stripPrefix:
     prefixes:
-      - /api
+      - /api # Remove this prefix before the request reaches the backend

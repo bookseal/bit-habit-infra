@@ -1,162 +1,192 @@
+# =============================================================================
+# base/ingress.yaml  –  Main Ingress routing for all bit-habit.com subdomains
+#
+# This single Ingress resource maps every public hostname to the correct
+# in-cluster Service.  Traefik (bundled with k3s) reads these rules and
+# forwards HTTPS traffic accordingly.
+#
+# TLS is handled automatically by cert-manager via the ClusterIssuer
+# "letsencrypt-prod".  The wildcard cert (*.bit-habit.com) is stored in
+# the Secret named "tls-secret".
+# =============================================================================
+
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: main-ingress
   namespace: default
   annotations:
-    kubernetes.io/ingress.class: traefik
-    traefik.ingress.kubernetes.io/router.entrypoints: websecure
-    traefik.ingress.kubernetes.io/router.tls: "true"
-    cert-manager.io/cluster-issuer: letsencrypt-prod
+    kubernetes.io/ingress.class: traefik # Use Traefik as the ingress controller
+    traefik.ingress.kubernetes.io/router.entrypoints: websecure # Accept HTTPS traffic only (port 443)
+    traefik.ingress.kubernetes.io/router.tls: "true" # Enable TLS termination at Traefik
+    cert-manager.io/cluster-issuer: letsencrypt-prod # Auto-provision TLS certs via Let's Encrypt
 spec:
   tls:
-  - hosts:
-    - bit-habit.com
-    - "*.bit-habit.com"
-    secretName: tls-secret
+    - hosts:
+        - bit-habit.com
+        - "*.bit-habit.com"
+      secretName: tls-secret # Wildcard certificate stored in this Secret
   rules:
-  - host: bit-habit.com
-    http:
-      paths:
-      - path: /
-        pathType: Prefix
-        backend:
-          service:
-            name: static-web-svc
-            port:
-              number: 80
-  - host: www.bit-habit.com
-    http:
-      paths:
-      - path: /
-        pathType: Prefix
-        backend:
-          service:
-            name: static-web-svc
-            port:
-              number: 80
-  - host: blog.bit-habit.com
-    http:
-      paths:
-      - path: /
-        pathType: Prefix
-        backend:
-          service:
-            name: ghost-svc
-            port:
-              number: 80
-  - host: www.blog.bit-habit.com
-    http:
-      paths:
-      - path: /
-        pathType: Prefix
-        backend:
-          service:
-            name: ghost-svc
-            port:
-              number: 80
-  - host: booktoss.bit-habit.com
-    http:
-      paths:
-      - path: /
-        pathType: Prefix
-        backend:
-          service:
-            name: booktoss-svc
-            port:
-              number: 80
-  - host: code-server.bit-habit.com
-    http:
-      paths:
-      - path: /
-        pathType: Prefix
-        backend:
-          service:
-            name: code-server-svc
-            port:
-              number: 80
-  - host: daily-seongsu.bit-habit.com
-    http:
-      paths:
-      - path: /
-        pathType: Prefix
-        backend:
-          service:
-            name: daily-seongsu-svc
-            port:
-              number: 80
-  - host: habit.bit-habit.com
-    http:
-      paths:
-      - path: /
-        pathType: Prefix
-        backend:
-          service:
-            name: static-web-svc
-            port:
-              number: 80
-  - host: startpage.bit-habit.com
-    http:
-      paths:
-      - path: /
-        pathType: Prefix
-        backend:
-          service:
-            name: startpage-svc
-            port:
-              number: 80
-  - host: status.bit-habit.com
-    http:
-      paths:
-      - path: /
-        pathType: Prefix
-        backend:
-          service:
-            name: static-web-svc
-            port:
-              number: 80
-  - host: seoul-apt.bit-habit.com
-    http:
-      paths:
-      - path: /
-        pathType: Prefix
-        backend:
-          service:
-            name: seoul-apt-price
-            port:
-              number: 80
-  - host: viz.bit-habit.com
-    http:
-      paths:
-      - path: /
-        pathType: Prefix
-        backend:
-          service:
-            name: viz-platform-svc
-            port:
-              number: 80
-  - host: wiki.bit-habit.com
-    http:
-      paths:
-      - path: /
-        pathType: Prefix
-        backend:
-          service:
-            name: wikijs-svc
-            port:
-              number: 80
-  - host: www.wiki.bit-habit.com
-    http:
-      paths:
-      - path: /
-        pathType: Prefix
-        backend:
-          service:
-            name: wikijs-svc
-            port:
-              number: 80
+    # ---- Main landing page ----
+    - host: bit-habit.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: static-web-svc
+                port:
+                  number: 80
+    - host: www.bit-habit.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: static-web-svc
+                port:
+                  number: 80
+    # ---- Ghost blog (blog.bit-habit.com) ----
+    - host: blog.bit-habit.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: ghost-svc
+                port:
+                  number: 80
+    - host: www.blog.bit-habit.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: ghost-svc
+                port:
+                  number: 80
+    # ---- Booktoss – book-sharing service ----
+    - host: booktoss.bit-habit.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: booktoss-svc
+                port:
+                  number: 80
+    # ---- Code-server – browser-based VS Code ----
+    - host: code-server.bit-habit.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: code-server-svc
+                port:
+                  number: 80
+    # ---- Daily Seongsu – Gradio data app ----
+    - host: daily-seongsu.bit-habit.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: daily-seongsu-svc
+                port:
+                  number: 80
+    # ---- Habit tracker frontend (UI only; API has its own Ingress below) ----
+    - host: habit.bit-habit.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: static-web-svc
+                port:
+                  number: 80
+    # ---- Startpage – personal dashboard ----
+    - host: startpage.bit-habit.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: startpage-svc
+                port:
+                  number: 80
+    # ---- Status page (static site) ----
+    - host: status.bit-habit.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: static-web-svc
+                port:
+                  number: 80
+    # ---- Seoul Apartment Price app ----
+    - host: seoul-apt.bit-habit.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: seoul-apt-price
+                port:
+                  number: 80
+    # ---- Viz Platform – data visualisation ----
+    - host: viz.bit-habit.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: viz-platform-svc
+                port:
+                  number: 80
+    # ---- Wiki.js – internal knowledge base ----
+    - host: wiki.bit-habit.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: wikijs-svc
+                port:
+                  number: 80
+    - host: www.wiki.bit-habit.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: wikijs-svc
+                port:
+                  number: 80
 ---
-# habit.bit-habit.com/api/ 전용 Ingress (strip-api middleware 적용)
+# =============================================================================
+# Separate Ingress for the Habit API  (habit.bit-habit.com/api/*)
+#
+# A dedicated Ingress is required so the "strip-api-prefix" Middleware can be
+# applied only to the /api/ path.  Traefik removes the /api prefix before
+# forwarding requests to the upstream FastAPI service, so the backend does
+# not need to know about the /api prefix.
+# =============================================================================
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
@@ -166,20 +196,21 @@ metadata:
     kubernetes.io/ingress.class: traefik
     traefik.ingress.kubernetes.io/router.entrypoints: websecure
     traefik.ingress.kubernetes.io/router.tls: "true"
+    # Apply the strip-api-prefix Middleware defined in base/middlewares/
     traefik.ingress.kubernetes.io/router.middlewares: default-strip-api-prefix@kubernetescrd
 spec:
   tls:
-  - hosts:
-    - habit.bit-habit.com
-    secretName: tls-secret
+    - hosts:
+        - habit.bit-habit.com
+      secretName: tls-secret
   rules:
-  - host: habit.bit-habit.com
-    http:
-      paths:
-      - path: /api/
-        pathType: Prefix
-        backend:
-          service:
-            name: bithabit-api-svc
-            port:
-              number: 80
+    - host: habit.bit-habit.com
+      http:
+        paths:
+          - path: /api/
+            pathType: Prefix
+            backend:
+              service:
+                name: bithabit-api-svc # FastAPI backend for the Habit tracker
+                port:
+                  number: 80

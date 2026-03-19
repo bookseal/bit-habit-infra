@@ -1,14 +1,24 @@
+# =============================================================================
+# base/cert-manager/certificate.yaml  –  Wildcard TLS Certificate request
+#
+# Instructs cert-manager to issue and renew a wildcard cert for bit-habit.com.
+# The resulting certificate is stored in the Secret "tls-secret", which is
+# referenced by both Ingress resources in base/ingress.yaml.
+#
+# cert-manager automatically renews this certificate before it expires
+# (typically 30 days before the 90-day Let's Encrypt expiry).
+# =============================================================================
 apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
   name: bit-habit-tls
   namespace: default
 spec:
-  secretName: tls-secret
+  secretName: tls-secret # Secret where cert + key will be stored
   issuerRef:
-    name: letsencrypt-prod
+    name: letsencrypt-prod # Use the ClusterIssuer defined in cluster-issuer.yaml
     kind: ClusterIssuer
   commonName: "bit-habit.com"
   dnsNames:
-  - "bit-habit.com"
-  - "*.bit-habit.com"
+    - "bit-habit.com" # Apex domain
+    - "*.bit-habit.com" # All subdomains (blog, wiki, booktoss, etc.)
