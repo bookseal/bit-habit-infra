@@ -1,0 +1,56 @@
+# =============================================================================
+# apps/argocd/application.yaml  –  ArgoCD Application resources
+#
+# Each Application tells ArgoCD to watch a specific path in this Git repo
+# and keep the cluster in sync with whatever manifests it finds there.
+# =============================================================================
+
+# --- Root application: watches base/ directory (ingress, cert-manager, middlewares) ---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: bit-habit-base
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/bookseal/bit-habit-infra.git
+    targetRevision: main
+    path: base
+    directory:
+      recurse: true
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: default
+  syncPolicy:
+    automated:
+      prune: false        # Do not auto-delete resources removed from Git (safety)
+      selfHeal: true      # Re-apply if someone edits resources by hand
+    syncOptions:
+      - CreateNamespace=true
+
+---
+# --- Apps application: watches apps/ directory (all app deployments + services) ---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: bit-habit-apps
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/bookseal/bit-habit-infra.git
+    targetRevision: main
+    path: apps
+    directory:
+      recurse: true
+      exclude: "argocd/*"  # Don't let ArgoCD manage itself
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: default
+  syncPolicy:
+    automated:
+      prune: false
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

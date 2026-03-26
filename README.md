@@ -22,6 +22,7 @@ Every box is something actually running on this server right now.
 | `cert-manager`         | Automatic HTTPS certificate issuer                                             |
 | `kubernetes-dashboard` | `oauth2-proxy` — the GitHub login gate for the admin UI                        |
 | `headlamp`             | Headlamp itself — the dashboard that produced this screenshot                  |
+| `argocd`               | ArgoCD — GitOps controller that auto-syncs Git manifests to the cluster        |
 
 **Want to understand what all of this means?** Start at section 1 and read as far as you like. ↓
 
@@ -61,7 +62,7 @@ Every box is something actually running on this server right now.
     - [4.7.2 What happens if etcd is lost](#472-what-happens-if-etcd-is-lost)
   - [4.8 GitOps — what it means and why it matters](#48-gitops--what-it-means-and-why-it-matters)
     - [4.8.1 What GitOps is](#481-what-gitops-is)
-    - [4.8.2 How this repo relates to GitOps](#482-how-this-repo-relates-to-gitops)
+    - [4.8.2 How this repo relates to GitOps](#482-how-this-repo-relates-to-gitops) ➡️ [Full ArgoCD Guide](docs/argocd-guide.md)
   - [4.9 The complete picture](#49-the-complete-picture)
 - [5. 🧠 Understand in 1000 minutes](#5--understand-in-1000-minutes)
   - [5.1 Cluster and node questions](#51-cluster-and-node-questions)
@@ -654,11 +655,32 @@ Benefits:
 
 #### 4.8.2 🗺️ How this repo relates to GitOps
 
-This repo is **not yet using GitOps tooling** like Argo CD or Flux. Manifests are still applied manually with `kubectl apply`.
+This repo **uses ArgoCD** for GitOps. ArgoCD watches the `main` branch and automatically syncs changes to the cluster.
 
-However, the repo is **structured like a GitOps repo** — manifests are organized in `base/` and `apps/`, and the Git history documents every change.
+Two ArgoCD Applications manage this repo:
 
-Adding GitOps tooling later would be a natural next step. The repo layout is already ready for it.
+| Application | Watches | What it manages |
+|-------------|---------|-----------------|
+| `bit-habit-base` | `base/` | Ingress, cert-manager, middlewares |
+| `bit-habit-apps` | `apps/` | All application deployments and services |
+
+```mermaid
+flowchart LR
+    GIT["📦 Git push to main"]:::git --> ARGO["🔄 ArgoCD detects change"]:::argo
+    ARGO --> SYNC["☸️ Auto-sync to cluster"]:::k8s
+    SYNC --> DASH["🖥️ Dashboard shows ✅"]:::ok
+
+    classDef git fill:#F44336,stroke:#D32F2F,color:#fff
+    classDef argo fill:#FF9800,stroke:#F57C00,color:#fff
+    classDef k8s fill:#2196F3,stroke:#1976D2,color:#fff
+    classDef ok fill:#4CAF50,stroke:#388E3C,color:#fff
+```
+
+The ArgoCD Web UI is available at `https://argocd.bit-habit.com`.
+
+> 📖 **New to ArgoCD?** Read the full beginner's guide: **[ArgoCD Guide — From Zero to GitOps](docs/argocd-guide.md)**
+>
+> It covers installation, architecture, daily operations, CLI usage, troubleshooting, and more — with visual diagrams for every concept.
 
 ---
 
@@ -939,7 +961,7 @@ Prometheus evaluates alert rules (e.g. "cert expires in less than 7 days" or "Po
 
 ### 5.6 🔀 CI/CD and GitOps questions
 
-> _You know: GitOps means Git is the source of truth. Argo CD / Flux watch a repo and auto-apply changes. This repo is structured for GitOps but applies manifests manually today._
+> _You know: GitOps means Git is the source of truth. ArgoCD watches this repo and auto-applies changes to the cluster. See the [full ArgoCD guide](docs/argocd-guide.md) for hands-on instructions._
 
 ---
 

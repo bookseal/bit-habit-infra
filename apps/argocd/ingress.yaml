@@ -1,0 +1,32 @@
+# =============================================================================
+# apps/argocd/ingress.yaml  –  Expose ArgoCD UI at argocd.bit-habit.com
+#
+# ArgoCD server runs with --insecure flag so Traefik handles TLS termination.
+# Uses the same wildcard cert (*.bit-habit.com) as the rest of the cluster.
+# =============================================================================
+
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: argocd-ingress
+  namespace: argocd
+  annotations:
+    kubernetes.io/ingress.class: traefik
+    traefik.ingress.kubernetes.io/router.entrypoints: websecure
+    traefik.ingress.kubernetes.io/router.tls: "true"
+spec:
+  tls:
+    - hosts:
+        - argocd.bit-habit.com
+      secretName: tls-secret
+  rules:
+    - host: argocd.bit-habit.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: argocd-server
+                port:
+                  number: 80
