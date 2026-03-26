@@ -1,0 +1,31 @@
+# Step 6-7: PersistentVolume + PersistentVolumeClaim
+# CSV 데이터 파일들을 호스트 경로에서 Pod로 마운트
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: daily-seongsu-data-pv
+spec:
+  capacity:
+    storage: 1Gi
+  accessModes:
+    - ReadOnlyMany # 데이터 파일은 읽기 전용으로 마운트
+  persistentVolumeReclaimPolicy: Retain # Pod 삭제 시 PV는 보존
+  storageClassName: "" # 수동 바인딩 (Static Provisioning)
+  hostPath:
+    path: /home/ubuntu/workspace/daily_seongsu
+    type: Directory
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: daily-seongsu-data-pvc
+  namespace: default
+spec:
+  accessModes:
+    - ReadOnlyMany
+  storageClassName: "" # Static PV 참조
+  volumeName: daily-seongsu-data-pv # 위 PV에 직접 바인딩
+  resources:
+    requests:
+      storage: 1Gi

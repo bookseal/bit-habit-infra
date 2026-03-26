@@ -1,0 +1,44 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: seoul-apt-price
+  namespace: default
+  labels:
+    app: seoul-apt-price
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: seoul-apt-price
+  template:
+    metadata:
+      labels:
+        app: seoul-apt-price
+    spec:
+      containers:
+        - name: seoul-apt-price
+          image: seoul-apt-price:latest
+          imagePullPolicy: Never
+          ports:
+            - containerPort: 8501
+          resources:
+            requests:
+              cpu: "250m"
+              memory: "512Mi"
+            limits:
+              cpu: "1000m"
+              memory: "1Gi"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: seoul-apt-price
+  namespace: default
+spec:
+  selector:
+    app: seoul-apt-price
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 8501
+  type: ClusterIP

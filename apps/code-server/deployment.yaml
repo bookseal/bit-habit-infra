@@ -21,7 +21,10 @@ spec:
             - containerPort: 8080
           env:
             - name: PASSWORD
-              value: "!Qudrnco20500"
+              valueFrom:
+                secretKeyRef:
+                  name: code-server-secret
+                  key: PASSWORD
           volumeMounts:
             - name: workspace
               mountPath: /home/coder/workspace

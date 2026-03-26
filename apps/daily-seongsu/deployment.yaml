@@ -1,0 +1,102 @@
+# Step 8-11: Deployment Manifest
+# Gradio 앱을 K8s Pod로 직접 관리
+# - image: 로컬 빌드 후 k3s containerd에 import
+# - envFrom: Secret에서 환경변수 주입 (.env 파일 불필요)
+# - volumeMounts: CSV 데이터 파일 마운트 (PVC)
+# - resources: CPU/Memory 제한 (docker-compose와 동일)
+# - livenessProbe: 앱이 멈췄을 때 자동 재시작
+# - readinessProbe: 앱이 완전히 기동된 후 트래픽 수신
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: daily-seongsu
+  namespace: default
+  labels:
+    app: daily-seongsu
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: daily-seongsu
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0 # 무중단 배포: 새 Pod 기동 후 구 Pod 제거
+  template:
+    metadata:
+      labels:
+        app: daily-seongsu
+    spec:
+      containers:
+        - name: daily-seongsu
+          # 로컬 빌드 이미지 (imagePullPolicy: Never → 레지스트리 pull 안 함)
+          image: daily-seongsu:latest
+          imagePullPolicy: Never
+          ports:
+            - containerPort: 7860
+              name: http
+
+          # Step 5: .env 대신 K8s Secret에서 환경변수 주입
+          envFrom:
+            - secretRef:
+                name: daily-seongsu-secret
+
+          # K8s 런타임 환경변수 (Gradio 서버 설정)
+          env:
+            - name: GRADIO_SERVER_NAME
+              value: "0.0.0.0"
+            - name: GRADIO_SERVER_PORT
+              value: "7860"
+            - name: PYTHONUNBUFFERED
+              value: "1"
+
+          # Step 9: Resource 요청/제한 (docker-compose 설정과 동일)
+          resources:
+            requests:
+              cpu: "250m" # 최소 보장 CPU (0.25 core)
+              memory: "512Mi" # 최소 보장 Memory
+            limits:
+              cpu: "1000m" # 최대 CPU (1 core)
+              memory: "1Gi" # 최대 Memory
+
+          # Step 10: Liveness Probe — 앱이 멈추면 자동 재시작
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 7860
+            initialDelaySeconds: 60 # Gradio 초기 로딩 대기 (의존성 무거움)
+            periodSeconds: 30
+            timeoutSeconds: 10
+            failureThreshold: 3
+
+          # Step 11: Readiness Probe — 기동 완료 후 트래픽 수신
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 7860
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 5 # 50초 여유를 두고 READY 판정
+
+          # Step 7: CSV 데이터 파일 마운트 (PVC)
+          volumeMounts:
+            - name: data
+              mountPath: /app/data_features_level2.csv
+              subPath: data_features_level2.csv
+              readOnly: true
+            - name: data
+              mountPath: /app/train_data.csv
+              subPath: train_data.csv
+              readOnly: true
+            - name: data
+              mountPath: /app/test_data.csv
+              subPath: test_data.csv
+              readOnly: true
+
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: daily-seongsu-data-pvc

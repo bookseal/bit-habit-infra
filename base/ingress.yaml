@@ -135,6 +135,17 @@ spec:
                 name: static-web-svc
                 port:
                   number: 80
+    # ---- Sentinel – real-time cognitive assistant ----
+    - host: sentinel.bit-habit.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: sentinel-svc
+                port:
+                  number: 80
     # ---- Seoul Apartment Price app ----
     - host: seoul-apt.bit-habit.com
       http:

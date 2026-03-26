@@ -1,0 +1,19 @@
+# Step 12: ClusterIP Service
+# selector 기반 Service (기존 headless Service+Endpoints 패턴 대체)
+# Service name은 daily-seongsu-svc로 유지 → Ingress 변경 불필요
+apiVersion: v1
+kind: Service
+metadata:
+  name: daily-seongsu-svc
+  namespace: default
+  labels:
+    app: daily-seongsu
+spec:
+  type: ClusterIP
+  selector:
+    app: daily-seongsu # Deployment Pod를 직접 선택
+  ports:
+    - name: http
+      protocol: TCP
+      port: 80
+      targetPort: 7860

@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: sentinel-svc
+  namespace: default
+spec:
+  selector:
+    app: sentinel
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 7860
