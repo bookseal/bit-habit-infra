@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
         - name: code-server
-          image: docker.io/codercom/code-server:latest
+          image: docker.io/library/code-server-custom:latest
           imagePullPolicy: Never
           ports:
             - containerPort: 8080
