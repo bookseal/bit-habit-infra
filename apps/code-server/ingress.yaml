@@ -1,0 +1,26 @@
+# Traefik IngressRoute for OAuth2 Proxy + code-server
+# GitHub SSO authentication for code-server.bit-habit.com
+
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: code-server-oauth
+  namespace: default
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    # OAuth2 callback & sign-out paths
+    - match: Host(`code-server.bit-habit.com`) && PathPrefix(`/oauth2`)
+      kind: Rule
+      services:
+        - name: code-server-oauth2-proxy
+          port: 4180
+    # All other traffic goes through OAuth2 Proxy
+    - match: Host(`code-server.bit-habit.com`)
+      kind: Rule
+      services:
+        - name: code-server-oauth2-proxy
+          port: 4180
+  tls:
+    secretName: tls-secret

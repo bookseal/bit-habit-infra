@@ -17,14 +17,11 @@ spec:
         - name: code-server
           image: docker.io/library/code-server-custom:latest
           imagePullPolicy: Never
+          args:
+            - --auth
+            - none
           ports:
             - containerPort: 8080
-          env:
-            - name: PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: code-server-secret
-                  key: PASSWORD
           volumeMounts:
             - name: workspace
               mountPath: /home/coder/workspace

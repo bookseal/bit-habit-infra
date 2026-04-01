@@ -1,0 +1,78 @@
+# OAuth2 Proxy for GitHub authentication
+# Protects code-server with GitHub SSO (restricted to bookseal)
+#
+# Secret is intentionally not defined in this file.
+# Create code-server-oauth2-secret out-of-band:
+#   kubectl create secret generic code-server-oauth2-secret -n default \
+#     --from-literal=client-id="<ID>" \
+#     --from-literal=client-secret="<SECRET>" \
+#     --from-literal=cookie-secret="$(openssl rand -base64 32 | head -c 32)"
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: code-server-oauth2-proxy
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: code-server-oauth2-proxy
+  template:
+    metadata:
+      labels:
+        app: code-server-oauth2-proxy
+    spec:
+      containers:
+        - name: oauth2-proxy
+          image: quay.io/oauth2-proxy/oauth2-proxy:v7.5.1
+          args:
+            - --provider=github
+            - --github-user=bookseal
+            - --email-domain=*
+            - --upstream=http://code-server-svc.default.svc.cluster.local
+            - --http-address=0.0.0.0:4180
+            - --redirect-url=https://code-server.bit-habit.com/oauth2/callback
+            - --cookie-secure=true
+            - --cookie-httponly=true
+            - --cookie-samesite=lax
+            - --set-xauthrequest=true
+            - --pass-access-token=true
+          env:
+            - name: OAUTH2_PROXY_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: code-server-oauth2-secret
+                  key: client-id
+            - name: OAUTH2_PROXY_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: code-server-oauth2-secret
+                  key: client-secret
+            - name: OAUTH2_PROXY_COOKIE_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: code-server-oauth2-secret
+                  key: cookie-secret
+          ports:
+            - containerPort: 4180
+              name: http
+          resources:
+            limits:
+              memory: "128Mi"
+              cpu: "100m"
+            requests:
+              memory: "64Mi"
+              cpu: "50m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: code-server-oauth2-proxy
+  namespace: default
+spec:
+  selector:
+    app: code-server-oauth2-proxy
+  ports:
+    - port: 4180
+      targetPort: 4180

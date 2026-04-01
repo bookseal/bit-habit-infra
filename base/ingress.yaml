@@ -80,17 +80,7 @@ spec:
                 name: booktoss-svc
                 port:
                   number: 80
-    # ---- Code-server – browser-based VS Code ----
-    - host: code-server.bit-habit.com
-      http:
-        paths:
-          - path: /
-            pathType: Prefix
-            backend:
-              service:
-                name: code-server-svc
-                port:
-                  number: 80
+    # ---- Code-server – routed via IngressRoute with OAuth2 (apps/code-server/ingress.yaml) ----
     # ---- Daily Seongsu – Gradio data app ----
     - host: daily-seongsu.bit-habit.com
       http:
