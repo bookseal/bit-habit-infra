@@ -1,13 +1,33 @@
 # bit-habit-infra
 
-> GitOps infrastructure for a single-node k3s cluster on Oracle Cloud (OCI Ampere A1).
+> GitOps infrastructure for a single-node k3s cluster on Oracle Cloud (OCI Ampere A1).  
 > All services at `*.bit-habit.com` are defined here and auto-deployed by ArgoCD.
+
+**14 services · $0/month · Zero manual kubectl apply**
 
 ![Headlamp cluster map](assets/headlamp-cluster-map.png)
 
 ---
 
-## Architecture Overview
+## Why This Exists
+
+Every side project I build gets deployed with a custom domain. If it's not live, I don't care about it.
+
+But managing 10+ projects with separate Nginx configs got messy fast. So I built a proper platform:
+
+| Before | After |
+|---|---|
+| AWS EC2 (paid) | **OCI Ampere A1 (free tier)** |
+| Manual Nginx config × 10 | **k3s + Traefik auto-routing** |
+| Manual SSL renewal | **cert-manager auto-renewal (every 60 days)** |
+| Manual kubectl apply | **ArgoCD GitOps auto-sync** |
+| ~$50/month | **$0/month** |
+
+**Git is the single source of truth.** No manual `kubectl apply`. Ever.
+
+---
+
+## Architecture
 
 ```mermaid
 flowchart TB
@@ -23,7 +43,7 @@ flowchart TB
 
             subgraph NS_DEFAULT["namespace: default"]
                 API["bithabit-api\nFastAPI"]
-                GHOST["ghost\nBlog CMS"]
+                GHOST["ghost\nBlog"]
                 WIKI["wikijs\nKnowledge base"]
                 BOOKTOSS["booktoss\nBook search"]
                 STATIC["static-web\nNginx"]
@@ -63,8 +83,6 @@ flowchart TB
 
 ## GitOps Workflow
 
-This is the standard deployment flow. **Git is the single source of truth** — no manual `kubectl apply`.
-
 ```mermaid
 sequenceDiagram
     actor Dev as Developer
@@ -86,43 +104,40 @@ sequenceDiagram
     Note over Dev,K8s: Rollback = git revert + push
 ```
 
-### ArgoCD Applications
+---
+
+## How to Deploy
+
+### Add a new service
 
 ```mermaid
-flowchart LR
-    subgraph REPO["bit-habit-infra (GitHub)"]
-        BASE["base/\ningress, cert-manager,\nmiddlewares"]
-        APPS["apps/\nall service deployments"]
-    end
+flowchart TD
+    A["1. Write Dockerfile"] --> B["2. Build & import image\ndocker build → nerdctl load"]
+    B --> C["3. Create apps/myapp/\ndeployment.yaml + service.yaml"]
+    C --> D["4. Add ingress rule\nbase/ingress.yaml"]
+    D --> E["5. git push"]
+    E --> F["6. ArgoCD auto-syncs"]
+    F --> G["7. https://myapp.bit-habit.com ✅"]
+```
 
-    subgraph ARGO["ArgoCD"]
-        A1["bit-habit-base\nselfHeal: true"]
-        A2["bit-habit-apps\nselfHeal: true"]
-    end
+### Update an existing service
 
-    BASE --> A1
-    APPS --> A2
-    A1 -->|sync| CLUSTER["k3s cluster"]
-    A2 -->|sync| CLUSTER
+```
+docker build -t myapp:latest .
+→ nerdctl -n k8s.io load < myapp.tar
+→ kubectl rollout restart deploy/myapp
+→ Rolling update (zero downtime)
+```
+
+### Roll back
+
+```
+git revert + push → ArgoCD syncs to previous state
 ```
 
 ---
 
-## Traffic Flow
-
-How a request reaches your app — every hop from browser to container:
-
-```mermaid
-flowchart LR
-    A["Browser\nhttps://blog.bit-habit.com"] --> B["Route53\nDNS A record → server IP"]
-    B --> C["Traefik :443\nTLS termination\n(tls-secret from cert-manager)"]
-    C --> D["Ingress rules\nbase/ingress.yaml"]
-    D --> E["Service\nghost-svc:80\n(ClusterIP, iptables DNAT)"]
-    E --> F["Pod\nghost:5-alpine\n:2368"]
-    F --> G["Volume\nhostPath on host"]
-```
-
-### TLS Certificate Lifecycle
+## TLS Certificates
 
 ```mermaid
 sequenceDiagram
@@ -140,110 +155,45 @@ sequenceDiagram
     Note over CM,T: Auto-renew every 60 days (expires at 90)
 ```
 
----
-
-## Service Catalog
-
-| Service | Subdomain | Port | Stack | Directory |
-|---------|-----------|------|-------|-----------|
-| **bithabit-api** | `habit.bit-habit.com/api/*` | 8000 | FastAPI + SQLite | `apps/bithabit-api/` |
-| **static-web** | `bit-habit.com`, `habit`, `status` | 80 | Nginx | `apps/static-web/` |
-| **ghost** | `blog.bit-habit.com` | 2368 | Ghost + MySQL | `apps/ghost/` |
-| **wikijs** | `wiki.bit-habit.com` | 3000 | Wiki.js + PostgreSQL | `apps/wikijs/` |
-| **booktoss** | `booktoss.bit-habit.com` | 8000 | Streamlit + Playwright | `apps/booktoss/` |
-| **code-server** | `code-server.bit-habit.com` | 8080 | VS Code in browser | `apps/code-server/` |
-| **viz-platform** | `viz.bit-habit.com` | 8501 | Streamlit | `apps/viz-platform/` |
-| **startpage** | `startpage.bit-habit.com` | 8000 | Custom dashboard | `apps/startpage/` |
-| **daily-seongsu** | `daily-seongsu.bit-habit.com` | 7860 | Gradio ML app | `apps/daily-seongsu/` |
-| **sentinel** | `sentinel.bit-habit.com` | 7860 | Gradio AI assistant | `apps/sentinel/` |
-| **seoul-apt-price** | `seoul-apt.bit-habit.com` | 8501 | Streamlit ML app | `apps/seoul-apt-price/` |
-| **headlamp** | `k8s.bit-habit.com` | 4466 | Cluster dashboard | `apps/headlamp/` |
-| **oauth2-proxy** | `k8s.bit-habit.com` (gate) | 4180 | GitHub SSO | `apps/oauth2-proxy/` |
-| **argocd** | `argocd.bit-habit.com` | — | GitOps controller | `apps/argocd/` |
+One wildcard cert covers all subdomains. Fully automatic.
 
 ---
 
-## Repository Structure
+## Service Catalog (14 Services)
 
-```
-bit-habit-infra/
-├── base/                          # Cluster-wide infrastructure
-│   ├── ingress.yaml               #   Main routing: subdomain → service
-│   ├── cert-manager/              #   TLS: Let's Encrypt + Route53 DNS-01
-│   │   ├── cluster-issuer.yaml
-│   │   ├── certificate.yaml
-│   │   └── aws-secret.yaml
-│   └── middlewares/
-│       └── strip-api-middleware.yaml  # Strip /api prefix for FastAPI
-│
-├── apps/                          # Per-service deployments (ArgoCD watches this)
-│   ├── argocd/                    #   ArgoCD Application + Ingress
-│   ├── bithabit-api/              #   Deployment + Service
-│   ├── booktoss/
-│   ├── code-server/
-│   ├── daily-seongsu/             #   Deployment + Service + PV/PVC
-│   ├── ghost/
-│   ├── headlamp/
-│   ├── oauth2-proxy/
-│   ├── seoul-apt-price/
-│   ├── sentinel/
-│   ├── startpage/
-│   ├── static-web/
-│   ├── viz-platform/
-│   └── wikijs/
-│
-├── k3s-bootstrap/                 # Host-level setup (not applied by k8s)
-│   ├── config.yaml.example
-│   ├── install-server.sh.example
-│   └── registries.yaml.example
-│
-├── docs/                          # Guides & documentation
-│   ├── kubernetes-guide.md        #   K8s beginner's guidebook (zero → advanced)
-│   └── argocd-guide.md            #   ArgoCD setup & operations guide
-│
-└── assets/
-    └── headlamp-cluster-map.png
-```
+| Service | Subdomain | Port | Stack |
+|---------|-----------|------|-------|
+| **sentinel** | sentinel.bit-habit.com | 7860 | Gradio AI assistant |
+| **booktoss** | booktoss.bit-habit.com | 8000 | Streamlit + Playwright |
+| **bithabit-api** | habit.bit-habit.com/api/* | 8000 | FastAPI + SQLite |
+| **static-web** | bit-habit.com, habit, status | 80 | Nginx |
+| **ghost** | blog.bit-habit.com | 2368 | Ghost + MySQL |
+| **wikijs** | wiki.bit-habit.com | 3000 | Wiki.js + PostgreSQL |
+| **viz-platform** | viz.bit-habit.com | 8501 | Streamlit + Manim |
+| **seoul-apt-price** | seoul-apt.bit-habit.com | 8501 | Streamlit ML |
+| **code-server** | code-server.bit-habit.com | 8080 | VS Code in browser |
+| **startpage** | startpage.bit-habit.com | 8000 | Custom dashboard |
+| **daily-seongsu** | daily-seongsu.bit-habit.com | 7860 | Gradio ML |
+| **headlamp** | k8s.bit-habit.com | 4466 | Cluster dashboard |
+| **oauth2-proxy** | k8s.bit-habit.com (gate) | 4180 | GitHub SSO |
+| **argocd** | argocd.bit-habit.com | — | GitOps controller |
 
 ---
 
-## Standard Deployment Workflow
+## Design Decisions
 
-### Adding a new service
-
-```mermaid
-flowchart TD
-    A["1. Write Dockerfile\nin service repo"] --> B["2. Build & import image\n<code>docker build -t myapp:latest .\nnerdctl -n k8s.io load < myapp.tar</code>"]
-    B --> C["3. Create apps/myapp/\ndeployment.yaml + service.yaml"]
-    C --> D["4. Add ingress rule\nbase/ingress.yaml"]
-    D --> E["5. git add, commit, push"]
-    E --> F["6. ArgoCD auto-syncs\nPod + Service + Ingress created"]
-    F --> G["7. Verify\nhttps://myapp.bit-habit.com"]
-```
-
-### Updating an existing service
-
-```mermaid
-flowchart TD
-    A["1. Rebuild image\n<code>docker build -t myapp:latest .</code>"] --> B["2. Import to k3s\n<code>nerdctl -n k8s.io load < myapp.tar</code>"]
-    B --> C["3. Restart deployment\n<code>kubectl rollout restart deploy/myapp</code>"]
-    C --> D["4. Rolling update\n(zero downtime)"]
-
-    style D fill:#4CAF50,color:#fff
-```
-
-### Rolling back a deployment
-
-```mermaid
-flowchart LR
-    A["Problem detected"] --> B{"Git-level\nor k8s-level?"}
-    B -->|Git| C["git revert + push\nArgoCD auto-syncs"]
-    B -->|Quick| D["kubectl rollout undo\ndeploy/myapp"]
-```
+| Decision | Choice | Why |
+|----------|--------|-----|
+| **GitOps tool** | ArgoCD | Auto-sync, drift detection, self-heal, web UI |
+| **Ingress** | Single `base/ingress.yaml` | One routing table — easy to audit |
+| **TLS** | Wildcard via DNS-01 | One cert for all subdomains |
+| **Storage** | hostPath | Single node — simple and enough |
+| **Image pull** | `Never` (local builds) | No registry needed |
+| **Cost** | OCI free tier | ARM64, 4 cores, 24GB RAM — $0/month |
 
 ---
 
-## Cluster Topology
+## Cluster Layout
 
 ```mermaid
 flowchart TB
@@ -253,7 +203,7 @@ flowchart TB
             APISERVER["API Server"]
             SCHED["Scheduler"]
             CTRL["Controller Manager"]
-            SQLITE[("SQLite\n(etcd equivalent)")]
+            SQLITE[("SQLite\n(replaces etcd)")]
         end
 
         subgraph SYSTEM["kube-system"]
@@ -262,11 +212,11 @@ flowchart TB
             METRICS["metrics-server"]
         end
 
-        subgraph WORKLOADS["Workload Namespaces"]
+        subgraph WORKLOADS["Workloads"]
             DEFAULT["default\n11 services"]
-            HEADLAMP_NS["headlamp\noauth2-proxy + headlamp"]
-            ARGOCD_NS["argocd\nArgoCD server"]
-            CERTMGR_NS["cert-manager\ncert-manager + webhook"]
+            HEADLAMP_NS["headlamp\noauth2-proxy + UI"]
+            ARGOCD_NS["argocd\nGitOps controller"]
+            CERTMGR_NS["cert-manager\nTLS automation"]
         end
 
         APISERVER <--> SQLITE
@@ -278,23 +228,54 @@ flowchart TB
 
 ---
 
-## Key Design Decisions
+## Repo Structure
 
-| Decision | Choice | Why |
-|----------|--------|-----|
-| **Manifest location** | Centralized in `bit-habit-infra/apps/` | ArgoCD recommended pattern for single-operator clusters. Single source of truth. |
-| **GitOps tool** | ArgoCD | Auto-sync, drift detection, self-heal. Web UI at `argocd.bit-habit.com`. |
-| **Ingress** | Single `base/ingress.yaml` | One routing table, one wildcard cert, easy to audit. |
-| **TLS** | Wildcard `*.bit-habit.com` via DNS-01 | One cert covers all subdomains. Auto-renewed by cert-manager. |
-| **Storage** | `hostPath` volumes | Single-node cluster. Simple and sufficient. Migrate to PVC for multi-node. |
-| **Image pull** | `imagePullPolicy: Never` | Local builds imported to containerd. No registry needed. |
-| **Secrets** | Out-of-band `kubectl create secret` | Never committed to Git. Consider Sealed Secrets for full GitOps. |
+```
+bit-habit-infra/
+├── base/                          # Cluster-wide infra
+│   ├── ingress.yaml               #   Routing: subdomain → service
+│   ├── cert-manager/              #   TLS: Let's Encrypt + Route53
+│   │   ├── cluster-issuer.yaml
+│   │   ├── certificate.yaml
+│   │   └── aws-secret.yaml
+│   └── middlewares/
+│       └── strip-api-middleware.yaml
+│
+├── apps/                          # Per-service deployments
+│   ├── argocd/
+│   ├── bithabit-api/
+│   ├── booktoss/
+│   ├── code-server/
+│   ├── daily-seongsu/
+│   ├── ghost/
+│   ├── headlamp/
+│   ├── oauth2-proxy/
+│   ├── seoul-apt-price/
+│   ├── sentinel/
+│   ├── startpage/
+│   ├── static-web/
+│   ├── viz-platform/
+│   └── wikijs/
+│
+├── k3s-bootstrap/                 # Host-level setup
+│
+├── docs/
+│   ├── kubernetes-guide.md        # Zero-to-advanced k8s guide
+│   └── argocd-guide.md            # ArgoCD setup & ops
+│
+└── assets/
+    └── headlamp-cluster-map.png
+```
 
 ---
 
 ## Docs
 
-| Document | Description |
-|----------|-------------|
-| [Kubernetes Beginner's Guidebook](docs/kubernetes-guide.md) | Zero-to-advanced k8s guide using this cluster as a live example |
-| [ArgoCD Guide](docs/argocd-guide.md) | ArgoCD installation, architecture, daily ops, CLI, and troubleshooting |
+| Document | What's inside |
+|----------|---------------|
+| [Kubernetes Guide](docs/kubernetes-guide.md) | Learn k8s from scratch using this cluster as a live example |
+| [ArgoCD Guide](docs/argocd-guide.md) | Setup, architecture, daily ops, CLI, troubleshooting |
+
+---
+
+Built on OCI Ampere A1. Managed by ArgoCD. $0/month.
