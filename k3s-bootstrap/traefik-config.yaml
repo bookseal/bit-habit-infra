@@ -1,0 +1,41 @@
+# Traefik edge configuration for this single-node k3s cluster.
+#
+# Deploy target (host): /var/lib/rancher/k3s/server/manifests/traefik-config.yaml
+#   k3s auto-applies everything in that directory, so copying this file there triggers
+#   a Helm upgrade of the bundled Traefik. This is NOT an ArgoCD target (host-level config).
+#
+# What it configures (nginx analogy in parentheses):
+#   - hostPort 80/443 : Traefik binds the host ports 80/443 directly (nginx `listen 80/443`).
+#                       This cluster disables k3s ServiceLB (see config.yaml.example
+#                       `disable: servicelb`), so hostPort is what puts Traefik on the
+#                       public ports on this single node.
+#   - http -> https   : permanent (308) redirect :80 -> :443 (nginx `return 308 https://...`).
+#                       `to=:443` keeps the internal port out of the redirect URL.
+#   - updateStrategy  : Recreate. hostPort can be held by only one pod per node, so the old
+#                       pod must terminate before the new one starts (a few seconds of blip,
+#                       same trade-off as restarting nginx).
+#
+# Apply or change:
+#   sudo cp traefik-config.yaml /var/lib/rancher/k3s/server/manifests/traefik-config.yaml
+#   # k3s detects the change and redeploys Traefik automatically.
+apiVersion: helm.cattle.io/v1
+kind: HelmChartConfig
+metadata:
+  name: traefik
+  namespace: kube-system
+spec:
+  valuesContent: |-
+    service:
+      type: NodePort
+    updateStrategy:
+      type: Recreate
+      rollingUpdate: null
+    ports:
+      web:
+        hostPort: 80
+      websecure:
+        hostPort: 443
+    additionalArguments:
+      - "--entrypoints.web.http.redirections.entryPoint.to=:443"
+      - "--entrypoints.web.http.redirections.entryPoint.scheme=https"
+      - "--entrypoints.web.http.redirections.entryPoint.permanent=true"

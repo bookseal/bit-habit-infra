@@ -24,6 +24,14 @@ This directory is intentionally separate from `base/` and `apps/`.
   - Maps to `/etc/rancher/k3s/registries.yaml`
 - `install-server.sh.example`
   - Example installation command for a server node
+- `traefik-config.yaml`
+  - Traefik **edge** config: binds host ports `80/443` (hostPort) and forces
+    HTTP → HTTPS with a permanent (308) redirect. `Recreate` update strategy.
+  - Needed because this cluster disables k3s ServiceLB (`config.yaml.example`
+    `disable: servicelb`), so hostPort is what puts Traefik on the public ports.
+  - Maps to `/var/lib/rancher/k3s/server/manifests/traefik-config.yaml`
+    (auto-applied by k3s — copying it there triggers a Traefik Helm upgrade).
+  - Real, copy-as-is config (no secrets) — unlike the `.example` templates above.
 
 ## Important Runtime Paths
 
@@ -34,7 +42,7 @@ This directory is intentionally separate from `base/` and `apps/`.
 - `/etc/rancher/k3s/k3s.yaml`
   - Generated admin kubeconfig
 - `/var/lib/rancher/k3s/server/manifests/`
-  - Auto-applied manifests watched by k3s
+  - Auto-applied manifests watched by k3s (e.g. `traefik-config.yaml` lands here)
 
 ## Suggested Workflow
 
@@ -42,7 +50,9 @@ This directory is intentionally separate from `base/` and `apps/`.
 2. Copy it to the server as `/etc/rancher/k3s/config.yaml`.
 3. If needed, copy `registries.yaml.example` to `/etc/rancher/k3s/registries.yaml`.
 4. Install or restart k3s.
-5. Use the generated kubeconfig to apply `base/` and `apps/`.
+5. Copy `traefik-config.yaml` to `/var/lib/rancher/k3s/server/manifests/` so Traefik
+   binds host 80/443 and redirects HTTP → HTTPS.
+6. Use the generated kubeconfig to apply `base/` and `apps/`.
 
 ## What This Directory Does Not Do
 
