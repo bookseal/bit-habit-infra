@@ -1,0 +1,28 @@
+# Self-contained Ingress (same pattern as habit-api-ingress). No cert-manager
+# annotation on purpose: it reuses the existing wildcard certificate
+# (Secret tls-secret, *.bit-habit.com) instead of issuing a new one.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: llm-app-lab-ingress
+  namespace: default
+  annotations:
+    kubernetes.io/ingress.class: traefik
+    traefik.ingress.kubernetes.io/router.entrypoints: websecure
+    traefik.ingress.kubernetes.io/router.tls: "true"
+spec:
+  tls:
+    - hosts:
+        - llm-app-lab.bit-habit.com
+      secretName: tls-secret
+  rules:
+    - host: llm-app-lab.bit-habit.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: llm-app-lab-svc
+                port:
+                  number: 80

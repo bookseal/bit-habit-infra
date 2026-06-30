@@ -1,0 +1,46 @@
+# llm-app-lab — static concept-notes site (docs/).
+# Content is the docs/ folder of the llm-app-lab repo, mounted read-only via
+# hostPath; `git pull` on the server is what updates it (nginx just serves).
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: llm-app-lab
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: llm-app-lab
+  template:
+    metadata:
+      labels:
+        app: llm-app-lab
+    spec:
+      containers:
+        - name: nginx
+          image: nginx:alpine
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 80
+          volumeMounts:
+            - mountPath: /usr/share/nginx/html
+              name: docs
+              readOnly: true
+      volumes:
+        - name: docs
+          hostPath:
+            path: /home/ubuntu/workspace/llm-app-lab/docs
+            type: Directory
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: llm-app-lab-svc
+  namespace: default
+spec:
+  type: ClusterIP
+  selector:
+    app: llm-app-lab
+  ports:
+    - port: 80
+      targetPort: 80
