@@ -1,0 +1,45 @@
+# infra.bit-habit.com — platform infra explainer (static).
+# Serves bit-habit-infra/docs/ (this repo's own docs) via nginx hostPath mount.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: infra
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: infra
+  template:
+    metadata:
+      labels:
+        app: infra
+    spec:
+      containers:
+        - name: nginx
+          image: nginx:alpine
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 80
+          volumeMounts:
+            - mountPath: /usr/share/nginx/html
+              name: docs
+              readOnly: true
+      volumes:
+        - name: docs
+          hostPath:
+            path: /home/ubuntu/workspace/bit-habit-infra/docs
+            type: Directory
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: infra-svc
+  namespace: default
+spec:
+  type: ClusterIP
+  selector:
+    app: infra
+  ports:
+    - port: 80
+      targetPort: 80

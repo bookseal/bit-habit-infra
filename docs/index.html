@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>bit-habit · Platform Infra</title>
+    <script type="module">
+      import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
+      mermaid.initialize({ startOnLoad: true, theme: "neutral" });
+    </script>
+    <style>
+      :root { --ink:#1b1f24; --muted:#5b6570; --line:#e3e7ec; --bg:#fafbfc; --accent:#2d6cdf; --card:#fff; }
+      * { box-sizing: border-box; }
+      body { margin:0; background:var(--bg); color:var(--ink); font:16px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans KR",sans-serif; }
+      .wrap { max-width: 880px; margin: 0 auto; padding: 0 20px 80px; }
+      header.hero { padding: 48px 0 24px; border-bottom: 1px solid var(--line); }
+      h1 { font-size: 1.9rem; margin: 6px 0 12px; letter-spacing: -.01em; }
+      h2 { font-size: 1.3rem; margin: 44px 0 10px; padding-top: 8px; }
+      a { color: var(--accent); text-decoration: none; }
+      a:hover { text-decoration: underline; }
+      .muted { color: var(--muted); }
+      code { background:#eef1f5; padding:1px 5px; border-radius:4px; font-size:.88em; }
+      .tldr { font-size:1.02rem; }
+      .callout { background:#eef4ff; border:1px solid #cfe0ff; border-radius:10px; padding:14px 16px; margin:16px 0; }
+      .concept { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:16px 18px; margin:14px 0; }
+      .tag { display:inline-block; font-size:.75rem; font-weight:700; color:var(--accent); background:#eef4ff; padding:2px 8px; border-radius:999px; margin-bottom:8px; }
+      table { width:100%; border-collapse:collapse; font-size:.92rem; }
+      th,td { text-align:left; padding:7px 9px; border-bottom:1px solid var(--line); vertical-align:top; }
+      th { color:var(--muted); font-weight:600; }
+      .mermaid { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:16px; margin:14px 0; text-align:center; }
+      ul { padding-left: 20px; }
+      .btn { display:inline-block; background:var(--accent); color:#fff; padding:10px 18px; border-radius:8px; font-weight:600; margin-top:6px; }
+      .btn:hover { text-decoration:none; opacity:.92; }
+      footer { margin-top:56px; padding-top:18px; border-top:1px solid var(--line); color:var(--muted); font-size:.9rem; }
+      .quiz button { display:block; width:100%; text-align:left; margin:6px 0; padding:10px 12px; border:1px solid var(--line); border-radius:8px; background:#fff; cursor:pointer; font:inherit; }
+      .quiz button.correct { background:#e7f6ec; border-color:#9bd3ad; }
+      .quiz button.wrong { background:#fdeaea; border-color:#e7a8a8; }
+      .quiz .explain { display:none; margin-top:8px; }
+      .quiz.solved .explain { display:block; }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <header class="hero">
+        <p class="muted">bit-habit · platform infrastructure</p>
+        <h1>이 플랫폼은 어떻게 도는가 — How bit-habit runs</h1>
+        <p class="tldr muted">
+          한 대의 <strong>Oracle Cloud ARM 서버</strong> 위 <strong>k3s(경량 쿠버네티스)</strong>가
+          <code>*.bit-habit.com</code>의 16개+ 서비스를 굴립니다. 이 페이지는 그 구조를 nginx 비유로
+          설명해요. 실시간 상태는 아래 headlamp에서.
+          <br /><em>A single OCI Ampere A1 box running k3s + Traefik + cert-manager serves every
+          <code>*.bit-habit.com</code> service. This page explains the shape; headlamp shows it live.</em>
+        </p>
+        <p><a class="btn" href="https://headlamp.bit-habit.com" target="_blank" rel="noopener">🔭 라이브 클러스터 보기 (headlamp) →</a></p>
+      </header>
+
+      <h2>1 · nginx ↔ k8s 한눈에</h2>
+      <p class="tldr">이 클러스터는 결국 <strong>"여러 nginx 가상호스트를 자동 관리하는 시스템"</strong>입니다.</p>
+      <div class="concept">
+        <span class="tag">the mapping</span>
+        <table>
+          <thead><tr><th>k8s</th><th>nginx로 치면</th><th>하는 일 · role</th></tr></thead>
+          <tbody>
+            <tr><td><strong>Traefik</strong></td><td>nginx 본체(리버스 프록시)</td><td>호스트 80/443 직접 점유 + TLS 종료 + 라우팅</td></tr>
+            <tr><td><strong>Ingress</strong></td><td><code>server{ } / location{ proxy_pass }</code></td><td>"서브도메인 → 백엔드" 라우팅 표</td></tr>
+            <tr><td><strong>Service</strong></td><td><code>upstream{ }</code></td><td>파드를 가리키는 안정적 내부 주소</td></tr>
+            <tr><td><strong>Pod</strong></td><td>실제 앱 프로세스</td><td>컨테이너로 도는 애플리케이션</td></tr>
+            <tr><td><strong>cert-manager</strong></td><td>certbot</td><td>와일드카드 인증서 자동 발급·갱신</td></tr>
+            <tr><td><strong>k3s</strong></td><td>systemd + α</td><td>컨테이너 스케줄링·재시작·관리</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h2>2 · 요청이 들어오는 길 — the edge</h2>
+      <p class="tldr">별도 로드밸런서 없이 <strong>Traefik 파드가 호스트의 80/443을 직접</strong> 물고 있어요.</p>
+      <div class="mermaid">
+flowchart LR
+    U["Browser"] -->|"DNS: *.bit-habit.com (wildcard)"| IP["OCI public IP\n158.180.71.122"]
+    IP -->|":80"| R["Traefik :80\n308 redirect to https"]
+    R --> T
+    IP -->|":443"| T["Traefik :443\nTLS termination (wildcard cert)"]
+    T -->|"match by Host header"| ING["Ingress rules\n(per subdomain)"]
+    ING --> SVC["Service (ClusterIP)"]
+    SVC --> POD["Pod (app container)"]
+      </div>
+      <p class="muted">와일드카드 DNS라 새 서브도메인은 DNS 작업 없이 <em>Ingress 규칙 한 줄</em>이면 끝. <em>A new subdomain = one Ingress rule, no DNS change.</em></p>
+
+      <h2>3 · 와일드카드 TLS — 인증서 하나로 전부</h2>
+      <p class="tldr"><code>*.bit-habit.com</code> 와일드카드 인증서 <strong>하나</strong>를 cert-manager가 자동 발급·갱신하고 모든 서브도메인이 공유합니다.</p>
+      <div class="mermaid">
+sequenceDiagram
+    participant CM as cert-manager
+    participant DNS as Route53 DNS
+    participant LE as Let's Encrypt
+    participant T as Traefik
+    CM->>DNS: write _acme-challenge TXT (DNS-01)
+    LE->>DNS: verify TXT
+    LE-->>CM: wildcard cert (*.bit-habit.com)
+    CM->>CM: store in Secret "tls-secret"
+    T->>CM: serve cert by SNI
+    Note over CM,T: auto-renew before the 90-day expiry
+      </div>
+
+      <h2>4 · 배포의 현실 — push 하면 어떻게 live가 되나</h2>
+      <div class="callout">
+        ⚠️ <strong>정직 고지:</strong> 인프라 README는 "ArgoCD 자동동기"라 적혀 있지만 실제로는
+        <strong>ArgoCD 미설치 → 수동 <code>kubectl apply</code></strong>가 현재 배포 방식입니다.
+        (정적 사이트 일부는 GitHub Actions가 서버에 ssh로 <code>git pull</code>.)
+        <br /><em>Honesty note: the README claims ArgoCD auto-sync, but ArgoCD is not installed — deploys are manual <code>kubectl apply</code> today.</em>
+      </div>
+      <div class="concept">
+        <span class="tag">세 가지 "push → live" 방식</span>
+        <ul>
+          <li><strong>cron pull</strong> — 폴링. 단순하나 빌드·피드백 없음. 표준 아님.</li>
+          <li><strong>GitHub Actions (push CI/CD)</strong> — 이벤트 기반. 정적 → Pages, 서버 → ssh pull.</li>
+          <li><strong>ArgoCD (pull GitOps)</strong> — 클러스터가 git 감시·자동동기. k8s 표준, 여기선 <em>아직 미설치</em>.</li>
+        </ul>
+      </div>
+
+      <h2>5 · 라이브로 더 깊이</h2>
+      <p class="tldr">정적 설명은 여기까지. 파드 상태·로그·리소스 사용량 같은 <strong>실시간</strong>은 headlamp에서 봐요(GitHub SSO 게이트).</p>
+      <p><a class="btn" href="https://headlamp.bit-habit.com" target="_blank" rel="noopener">headlamp 열기 →</a></p>
+
+      <h2>6 · 미니 퀴즈</h2>
+      <div class="quiz" data-answer="2">
+        <p>README는 "ArgoCD가 자동 배포"라는데 실제 클러스터를 확인하면?</p>
+        <button>ArgoCD가 정상 동작 — push하면 자동 반영</button>
+        <button>ArgoCD는 다른 서버에서 돈다</button>
+        <button>ArgoCD 미설치 — 실제 배포는 수동 <code>kubectl apply</code></button>
+        <p class="explain muted"><code>argocd</code> 네임스페이스·CRD·파드가 전부 없어요. 문서는 <em>의도</em>, 현실은 수동. 인프라 문서는 늘 클러스터에 직접 물어보며 읽어야 합니다.</p>
+      </div>
+
+      <footer>
+        bit-habit · platform infra · k3s + Traefik + cert-manager on OCI Ampere A1 ·
+        소스: <a href="https://github.com/bookseal/bit-habit-infra" target="_blank" rel="noopener">bit-habit-infra</a>
+      </footer>
+    </div>
+    <script>
+      document.querySelectorAll(".quiz").forEach((quiz) => {
+        const answer = Number(quiz.dataset.answer);
+        quiz.querySelectorAll("button").forEach((opt, i) => {
+          opt.addEventListener("click", () => {
+            if (quiz.classList.contains("solved")) return;
+            if (i === answer) { opt.classList.add("correct"); quiz.classList.add("solved"); }
+            else { opt.classList.add("wrong"); opt.disabled = true; }
+          });
+        });
+      });
+    </script>
+  </body>
+</html>
