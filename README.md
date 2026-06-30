@@ -1,11 +1,33 @@
 # bit-habit-infra
 
 > GitOps infrastructure for a single-node k3s cluster on Oracle Cloud (OCI Ampere A1).  
-> All services at `*.bit-habit.com` are defined here and auto-deployed by ArgoCD.
+> All services at `*.bit-habit.com` are defined here. _(Intended for ArgoCD auto-sync — but ArgoCD is not yet installed; deploys are currently manual `kubectl apply`. See **Reality Check** above.)_
 
-**14 services · $0/month · Zero manual kubectl apply**
+**16+ services · $0/month** · ⚠️ _"Zero manual kubectl apply" is the target — currently manual (see Reality Check)_
 
 ![Headlamp cluster map](assets/headlamp-cluster-map.png)
+
+---
+
+## Reality Check
+
+_Verified against the live cluster on 2026-06-30._ ⚠️ This README describes the
+**intended** platform. Cross-checking with `kubectl` shows some claims are
+aspirational, not yet true. The original design text is kept below as the target
+state; corrections are summarised here.
+
+| Claim in this README | Reality on the cluster | Evidence |
+|---|---|---|
+| "auto-deployed by **ArgoCD**" / "GitOps auto-sync" | **ArgoCD is not installed.** Every deploy is a manual `kubectl apply`. | no `argocd` namespace, no `argoproj` CRD, no pod; [`apps/argocd/application.yaml`](apps/argocd/application.yaml) is defined but never applied |
+| "Zero manual kubectl apply. Ever." | Manual `kubectl apply` is the actual workflow | same |
+| headlamp at `k8s.bit-habit.com` | Actually `headlamp.bit-habit.com` | `kubectl get ingress -n headlamp` |
+| "No registry needed" / image pull `Never` | A local `registry:2` runs at `127.0.0.1:5000` | `ss -tlnp \| grep :5000` |
+| "14 services" | 16+ running; **missing** fider, plane, quali-fit, bithabit-web; **lists** code-server (being removed — [`apps/code-server`](apps/code-server)) and argocd (not deployed) | `kubectl get deploy -A` |
+
+**Accurate as written:** the edge/networking section (Traefik hostPort 80/443,
+80→443 redirect, wildcard TLS termination) and cert-manager / k3s+SQLite /
+hostPath. Those match the cluster. To actually make the ArgoCD sections true,
+see [`docs/argocd-guide.md`](docs/argocd-guide.md) (install still pending).
 
 ---
 
@@ -101,6 +123,8 @@ But managing 10+ projects with separate Nginx configs got messy fast. So I built
 
 ## Architecture
 
+> ⚠️ **Target state — not yet running.** The `argocd` namespace / ArgoCD→k8s sync shown below does not exist yet. See **Reality Check** above.
+
 ```mermaid
 flowchart TB
     subgraph Internet
@@ -154,6 +178,8 @@ flowchart TB
 ---
 
 ## GitOps Workflow
+
+> ⚠️ **Target state — not yet running.** The `argocd` namespace / ArgoCD→k8s sync shown below does not exist yet. See **Reality Check** above.
 
 ```mermaid
 sequenceDiagram
@@ -246,8 +272,8 @@ One wildcard cert covers all subdomains. Fully automatic.
 | **code-server** | code-server.bit-habit.com | 8080 | VS Code in browser |
 | **startpage** | startpage.bit-habit.com | 8000 | Custom dashboard |
 | **daily-seongsu** | daily-seongsu.bit-habit.com | 7860 | Gradio ML |
-| **headlamp** | k8s.bit-habit.com | 4466 | Cluster dashboard |
-| **oauth2-proxy** | k8s.bit-habit.com (gate) | 4180 | GitHub SSO |
+| **headlamp** | headlamp.bit-habit.com | 4466 | Cluster dashboard |
+| **oauth2-proxy** | headlamp.bit-habit.com (gate) | 4180 | GitHub SSO |
 | **argocd** | argocd.bit-habit.com | — | GitOps controller |
 
 ---
@@ -260,7 +286,7 @@ One wildcard cert covers all subdomains. Fully automatic.
 | **Ingress** | Single `base/ingress.yaml` | One routing table — easy to audit |
 | **TLS** | Wildcard via DNS-01 | One cert for all subdomains |
 | **Storage** | hostPath | Single node — simple and enough |
-| **Image pull** | `Never` (local builds) | No registry needed |
+| **Image pull** | `IfNotPresent` / `Never` | local `registry:2` at `127.0.0.1:5000` |
 | **Cost** | OCI free tier | ARM64, 4 cores, 24GB RAM — $0/month |
 
 ---
@@ -350,4 +376,4 @@ bit-habit-infra/
 
 ---
 
-Built on OCI Ampere A1. Managed by ArgoCD. $0/month.
+Built on OCI Ampere A1. _(Target: managed by ArgoCD; currently manual `kubectl apply` — see Reality Check.)_ $0/month.
