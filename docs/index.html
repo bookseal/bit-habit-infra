@@ -40,6 +40,12 @@
       .depthnav a:hover { border-color:var(--accent); color:var(--accent); text-decoration:none; }
       .badge { display:inline-block; font-size:.72rem; font-weight:800; letter-spacing:.05em; color:#fff; background:var(--accent); padding:3px 9px; border-radius:999px; vertical-align:middle; margin-right:9px; }
       .chips { display:flex; flex-wrap:wrap; gap:6px; margin:12px 0; }
+      /* live status strip (data from Gatus via same-origin /api) */
+      .statusgrid { display:flex; flex-wrap:wrap; gap:8px; margin:12px 0; }
+      .svc { display:flex; align-items:center; gap:7px; border:1px solid var(--line); border-radius:8px; padding:6px 11px; font-size:.9rem; background:#fff; }
+      .dot { width:9px; height:9px; border-radius:50%; background:#bbb; flex:0 0 auto; }
+      .dot.up { background:#28a745; } .dot.down { background:#e0413a; }
+      .statusnote { font-size:.85rem; }
     </style>
   </head>
   <body>
@@ -58,8 +64,17 @@
           <a href="#s5m">⏱ 5 minutes</a>
           <a href="#s1h">⏱ 1 hour</a>
         </div>
-        <p><a class="btn" href="https://headlamp.bit-habit.com" target="_blank" rel="noopener">🔭 Open the live cluster (headlamp) →</a></p>
+        <p><a class="btn" href="#live">● See what's up right now</a></p>
       </header>
+
+      <section id="live">
+        <h2><span class="badge">LIVE</span>Is everything up right now?</h2>
+        <p class="muted statusnote">
+          Each site is checked from the outside every 60 seconds.
+          Full status page → <a href="https://status.bit-habit.com" target="_blank" rel="noopener">status.bit-habit.com</a>.
+        </p>
+        <div id="statusgrid" class="statusgrid muted">Loading live status…</div>
+      </section>
 
       <section id="s10">
         <h2><span class="badge">10 SECONDS</span>The whole thing in one sentence</h2>
@@ -186,12 +201,15 @@ flowchart TB
         </div>
 
         <p class="tldr" style="margin-top:26px"><strong>Go further</strong></p>
-        <p>
-          See it live at <a href="https://headlamp.bit-habit.com" target="_blank" rel="noopener">headlamp.bit-habit.com</a>
-          — real pods, logs, and resource use (GitHub sign-in required). All the setup files live in
-          <a href="https://github.com/bookseal/bit-habit-infra" target="_blank" rel="noopener">github.com/bookseal/bit-habit-infra</a>.
-        </p>
-        <p><a class="btn" href="https://headlamp.bit-habit.com" target="_blank" rel="noopener">🔭 Open headlamp →</a></p>
+        <ul>
+          <li><strong>Live status</strong> (anyone): <a href="https://status.bit-habit.com" target="_blank" rel="noopener">status.bit-habit.com</a>
+            — every site's up/down and response time, checked from the outside.</li>
+          <li><strong>Deep view</strong> (operators): <a href="https://headlamp.bit-habit.com" target="_blank" rel="noopener">headlamp.bit-habit.com</a>
+            — real pods, logs, and resource use (sign-in required).</li>
+          <li><strong>Source</strong>: <a href="https://github.com/bookseal/bit-habit-infra" target="_blank" rel="noopener">github.com/bookseal/bit-habit-infra</a>
+            — every manifest and setting.</li>
+        </ul>
+        <p><a class="btn" href="https://status.bit-habit.com" target="_blank" rel="noopener">● Open the full status page →</a></p>
       </section>
 
       <footer>
@@ -199,5 +217,34 @@ flowchart TB
         source: <a href="https://github.com/bookseal/bit-habit-infra" target="_blank" rel="noopener">bit-habit-infra</a>
       </footer>
     </div>
+    <script>
+      // Pull live status from Gatus, served same-origin at /api (an ingress path
+      // routes infra.bit-habit.com/api → gatus-svc), so there is no CORS issue.
+      fetch("/api/v1/endpoints/statuses")
+        .then((r) => (r.ok ? r.json() : Promise.reject(r.status)))
+        .then((list) => {
+          const el = document.getElementById("statusgrid");
+          el.className = "statusgrid";
+          el.textContent = "";
+          list.forEach((ep) => {
+            const last = ep.results && ep.results[ep.results.length - 1];
+            const up = !!(last && last.success);
+            const cell = document.createElement("div");
+            cell.className = "svc";
+            const dot = document.createElement("span");
+            dot.className = "dot " + (up ? "up" : "down");
+            cell.append(dot, document.createTextNode(ep.name));
+            el.appendChild(cell);
+          });
+          if (!list.length) el.textContent = "No checks configured yet.";
+        })
+        .catch(() => {
+          const el = document.getElementById("statusgrid");
+          el.className = "statusgrid statusnote muted";
+          el.innerHTML =
+            'Live status is unavailable right now — see ' +
+            '<a href="https://status.bit-habit.com" target="_blank" rel="noopener">status.bit-habit.com</a>.';
+        });
+    </script>
   </body>
 </html>

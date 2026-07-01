@@ -18,6 +18,13 @@ spec:
     - host: infra.bit-habit.com
       http:
         paths:
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: gatus-svc
+                port:
+                  number: 80
           - path: /
             pathType: Prefix
             backend:
