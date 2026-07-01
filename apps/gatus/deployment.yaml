@@ -1,0 +1,134 @@
+# Gatus — public read-only status page for status.bit-habit.com.
+# Checks each site from the outside (HTTP) and shows up/down + response time.
+# Config-as-code: the endpoint list lives in the ConfigMap below.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: gatus-config
+  namespace: default
+data:
+  config.yaml: |
+    web:
+      port: 8080
+    ui:
+      title: bit-habit · status
+      header: bit-habit — service status
+      description: Live availability of the bit-habit.com services.
+    endpoints:
+      - name: landing (bit-habit.com)
+        group: main
+        url: "https://bit-habit.com"
+        interval: 60s
+        conditions: ["[STATUS] < 400"]
+      - name: startpage
+        group: main
+        url: "https://startpage.bit-habit.com"
+        interval: 60s
+        conditions: ["[STATUS] < 400"]
+      - name: blog
+        group: main
+        url: "https://blog.bit-habit.com"
+        interval: 60s
+        conditions: ["[STATUS] < 400"]
+      - name: wiki
+        group: main
+        url: "https://wiki.bit-habit.com"
+        interval: 60s
+        conditions: ["[STATUS] < 400"]
+      - name: habit tracker
+        group: main
+        url: "https://habit.bit-habit.com"
+        interval: 60s
+        conditions: ["[STATUS] < 400"]
+      - name: plane
+        group: apps
+        url: "https://plane.bit-habit.com"
+        interval: 60s
+        conditions: ["[STATUS] < 400"]
+      - name: fider
+        group: apps
+        url: "https://fider.bit-habit.com"
+        interval: 60s
+        conditions: ["[STATUS] < 400"]
+      - name: booktoss
+        group: apps
+        url: "https://booktoss.bit-habit.com"
+        interval: 60s
+        conditions: ["[STATUS] < 400"]
+      - name: viz
+        group: apps
+        url: "https://viz.bit-habit.com"
+        interval: 60s
+        conditions: ["[STATUS] < 400"]
+      - name: seoul-apt
+        group: apps
+        url: "https://seoul-apt.bit-habit.com"
+        interval: 60s
+        conditions: ["[STATUS] < 400"]
+      - name: sentinel
+        group: apps
+        url: "https://sentinel.bit-habit.com"
+        interval: 60s
+        conditions: ["[STATUS] < 400"]
+      - name: daily-seongsu
+        group: apps
+        url: "https://daily-seongsu.bit-habit.com"
+        interval: 60s
+        conditions: ["[STATUS] < 400"]
+      - name: quali-fit
+        group: apps
+        url: "https://quali-fit.bit-habit.com"
+        interval: 60s
+        conditions: ["[STATUS] < 400"]
+      - name: llm-app-lab
+        group: docs
+        url: "https://llm-app-lab.bit-habit.com"
+        interval: 60s
+        conditions: ["[STATUS] < 400"]
+      - name: infra
+        group: docs
+        url: "https://infra.bit-habit.com"
+        interval: 60s
+        conditions: ["[STATUS] < 400"]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gatus
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: gatus
+  template:
+    metadata:
+      labels:
+        app: gatus
+    spec:
+      containers:
+        - name: gatus
+          image: twinproduction/gatus:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8080
+          volumeMounts:
+            - name: config
+              mountPath: /config
+      volumes:
+        - name: config
+          configMap:
+            name: gatus-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: gatus-svc
+  namespace: default
+spec:
+  type: ClusterIP
+  selector:
+    app: gatus
+  ports:
+    - port: 80
+      targetPort: 8080

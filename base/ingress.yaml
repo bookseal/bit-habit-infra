@@ -132,7 +132,7 @@ spec:
             pathType: Prefix
             backend:
               service:
-                name: static-web-svc
+                name: gatus-svc
                 port:
                   number: 80
     # ---- Sentinel – real-time cognitive assistant ----
