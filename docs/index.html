@@ -1,9 +1,9 @@
 <!doctype html>
-<html lang="ko">
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>bit-habit · Platform Infra</title>
+    <title>bit-habit · How the servers run</title>
     <script type="module">
       import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
       mermaid.initialize({ startOnLoad: true, theme: "neutral" });
@@ -12,15 +12,15 @@
       :root { --ink:#1b1f24; --muted:#5b6570; --line:#e3e7ec; --bg:#fafbfc; --accent:#2d6cdf; --card:#fff; }
       * { box-sizing: border-box; }
       body { margin:0; background:var(--bg); color:var(--ink); font:16px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans KR",sans-serif; }
-      .wrap { max-width: 880px; margin: 0 auto; padding: 0 20px 80px; }
-      header.hero { padding: 48px 0 24px; border-bottom: 1px solid var(--line); }
+      .wrap { max-width: 860px; margin: 0 auto; padding: 0 20px 90px; }
+      header.hero { padding: 48px 0 22px; border-bottom: 1px solid var(--line); }
       h1 { font-size: 1.9rem; margin: 6px 0 12px; letter-spacing: -.01em; }
-      h2 { font-size: 1.3rem; margin: 44px 0 10px; padding-top: 8px; }
+      h2 { font-size: 1.3rem; margin: 46px 0 10px; padding-top: 8px; }
       a { color: var(--accent); text-decoration: none; }
       a:hover { text-decoration: underline; }
       .muted { color: var(--muted); }
       code { background:#eef1f5; padding:1px 5px; border-radius:4px; font-size:.88em; }
-      .tldr { font-size:1.02rem; }
+      .tldr { font-size:1.05rem; }
       .callout { background:#eef4ff; border:1px solid #cfe0ff; border-radius:10px; padding:14px 16px; margin:16px 0; }
       .concept { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:16px 18px; margin:14px 0; }
       .tag { display:inline-block; font-size:.75rem; font-weight:700; color:var(--accent); background:#eef4ff; padding:2px 8px; border-radius:999px; margin-bottom:8px; }
@@ -29,123 +29,175 @@
       th { color:var(--muted); font-weight:600; }
       .mermaid { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:16px; margin:14px 0; text-align:center; }
       ul { padding-left: 20px; }
+      ol { padding-left: 20px; }
+      ol li { margin: 4px 0; }
       .btn { display:inline-block; background:var(--accent); color:#fff; padding:10px 18px; border-radius:8px; font-weight:600; margin-top:6px; }
       .btn:hover { text-decoration:none; opacity:.92; }
       footer { margin-top:56px; padding-top:18px; border-top:1px solid var(--line); color:var(--muted); font-size:.9rem; }
-      .quiz button { display:block; width:100%; text-align:left; margin:6px 0; padding:10px 12px; border:1px solid var(--line); border-radius:8px; background:#fff; cursor:pointer; font:inherit; }
-      .quiz button.correct { background:#e7f6ec; border-color:#9bd3ad; }
-      .quiz button.wrong { background:#fdeaea; border-color:#e7a8a8; }
-      .quiz .explain { display:none; margin-top:8px; }
-      .quiz.solved .explain { display:block; }
+      /* depth layers */
+      .depthnav { display:flex; flex-wrap:wrap; gap:8px; margin:18px 0 6px; }
+      .depthnav a { border:1px solid var(--line); border-radius:999px; padding:6px 13px; font-size:.9rem; background:#fff; color:var(--ink); }
+      .depthnav a:hover { border-color:var(--accent); color:var(--accent); text-decoration:none; }
+      .badge { display:inline-block; font-size:.72rem; font-weight:800; letter-spacing:.05em; color:#fff; background:var(--accent); padding:3px 9px; border-radius:999px; vertical-align:middle; margin-right:9px; }
+      .chips { display:flex; flex-wrap:wrap; gap:6px; margin:12px 0; }
     </style>
   </head>
   <body>
     <div class="wrap">
       <header class="hero">
         <p class="muted">bit-habit · platform infrastructure</p>
-        <h1>이 플랫폼은 어떻게 도는가 — How bit-habit runs</h1>
+        <h1>How the servers run — from the URL you type to the page you see</h1>
         <p class="tldr muted">
-          한 대의 <strong>Oracle Cloud ARM 서버</strong> 위 <strong>k3s(경량 쿠버네티스)</strong>가
-          <code>*.bit-habit.com</code>의 16개+ 서비스를 굴립니다. 이 페이지는 그 구조를 nginx 비유로
-          설명해요. 실시간 상태는 아래 headlamp에서.
-          <br /><em>A single OCI Ampere A1 box running k3s + Traefik + cert-manager serves every
-          <code>*.bit-habit.com</code> service. This page explains the shape; headlamp shows it live.</em>
+          One small server hosts every <code>bit-habit.com</code> website. This page explains how,
+          in layers: read the first line in 10 seconds, or keep going for an hour. Stop whenever you
+          know enough.
         </p>
-        <p><a class="btn" href="https://headlamp.bit-habit.com" target="_blank" rel="noopener">🔭 라이브 클러스터 보기 (headlamp) →</a></p>
+        <div class="depthnav">
+          <a href="#s10">⏱ 10 seconds</a>
+          <a href="#s1m">⏱ 1 minute</a>
+          <a href="#s5m">⏱ 5 minutes</a>
+          <a href="#s1h">⏱ 1 hour</a>
+        </div>
+        <p><a class="btn" href="https://headlamp.bit-habit.com" target="_blank" rel="noopener">🔭 Open the live cluster (headlamp) →</a></p>
       </header>
 
-      <h2>1 · nginx ↔ k8s 한눈에</h2>
-      <p class="tldr">이 클러스터는 결국 <strong>"여러 nginx 가상호스트를 자동 관리하는 시스템"</strong>입니다.</p>
-      <div class="concept">
-        <span class="tag">the mapping</span>
-        <table>
-          <thead><tr><th>k8s</th><th>nginx로 치면</th><th>하는 일 · role</th></tr></thead>
-          <tbody>
-            <tr><td><strong>Traefik</strong></td><td>nginx 본체(리버스 프록시)</td><td>호스트 80/443 직접 점유 + TLS 종료 + 라우팅</td></tr>
-            <tr><td><strong>Ingress</strong></td><td><code>server{ } / location{ proxy_pass }</code></td><td>"서브도메인 → 백엔드" 라우팅 표</td></tr>
-            <tr><td><strong>Service</strong></td><td><code>upstream{ }</code></td><td>파드를 가리키는 안정적 내부 주소</td></tr>
-            <tr><td><strong>Pod</strong></td><td>실제 앱 프로세스</td><td>컨테이너로 도는 애플리케이션</td></tr>
-            <tr><td><strong>cert-manager</strong></td><td>certbot</td><td>와일드카드 인증서 자동 발급·갱신</td></tr>
-            <tr><td><strong>k3s</strong></td><td>systemd + α</td><td>컨테이너 스케줄링·재시작·관리</td></tr>
-          </tbody>
-        </table>
-      </div>
-
-      <h2>2 · 요청이 들어오는 길 — the edge</h2>
-      <p class="tldr">별도 로드밸런서 없이 <strong>Traefik 파드가 호스트의 80/443을 직접</strong> 물고 있어요.</p>
-      <div class="mermaid">
+      <section id="s10">
+        <h2><span class="badge">10 SECONDS</span>The whole thing in one sentence</h2>
+        <p class="tldr">
+          One small server runs every <code>bit-habit.com</code> website. You type an address,
+          it finds the right app, and sends the page back.
+        </p>
+        <div class="chips">
+          <code>bit-habit.com</code><code>startpage.bit-habit.com</code><code>blog.bit-habit.com</code>
+          <code>wiki.bit-habit.com</code><code>plane.bit-habit.com</code><code>… ~20 sites</code>
+        </div>
+        <div class="mermaid">
 flowchart LR
-    U["Browser"] -->|"DNS: *.bit-habit.com (wildcard)"| IP["OCI public IP\n158.180.71.122"]
-    IP -->|":80"| R["Traefik :80\n308 redirect to https"]
-    R --> T
-    IP -->|":443"| T["Traefik :443\nTLS termination (wildcard cert)"]
-    T -->|"match by Host header"| ING["Ingress rules\n(per subdomain)"]
-    ING --> SVC["Service (ClusterIP)"]
-    SVC --> POD["Pod (app container)"]
-      </div>
-      <p class="muted">와일드카드 DNS라 새 서브도메인은 DNS 작업 없이 <em>Ingress 규칙 한 줄</em>이면 끝. <em>A new subdomain = one Ingress rule, no DNS change.</em></p>
+    U["You (browser)"] --> S["One server\n(runs k3s)"] --> A["The right app\nreplies"]
+        </div>
+        <p class="muted">Want to know how it picks "the right app"? Keep reading.</p>
+      </section>
 
-      <h2>3 · 와일드카드 TLS — 인증서 하나로 전부</h2>
-      <p class="tldr"><code>*.bit-habit.com</code> 와일드카드 인증서 <strong>하나</strong>를 cert-manager가 자동 발급·갱신하고 모든 서브도메인이 공유합니다.</p>
-      <div class="mermaid">
-sequenceDiagram
-    participant CM as cert-manager
-    participant DNS as Route53 DNS
-    participant LE as Let's Encrypt
-    participant T as Traefik
-    CM->>DNS: write _acme-challenge TXT (DNS-01)
-    LE->>DNS: verify TXT
-    LE-->>CM: wildcard cert (*.bit-habit.com)
-    CM->>CM: store in Secret "tls-secret"
-    T->>CM: serve cert by SNI
-    Note over CM,T: auto-renew before the 90-day expiry
-      </div>
+      <section id="s1m">
+        <h2><span class="badge">1 MINUTE</span>What happens when you open <code>startpage.bit-habit.com</code></h2>
+        <p class="tldr">Follow one request from your browser to the page. Six steps.</p>
+        <ol>
+          <li><strong>Find the server.</strong> Your browser asks DNS "where is this address?" Every
+            <code>*.bit-habit.com</code> name points to one server IP: <code>158.180.71.122</code>.</li>
+          <li><strong>Knock on the front door.</strong> The request arrives at <strong>Traefik</strong> —
+            the program that receives every request, listening on ports 80 and 443.</li>
+          <li><strong>Force HTTPS.</strong> If you came on plain <code>http</code> (port 80), Traefik
+            sends you to secure <code>https</code> (port 443). It's a permanent redirect (status 308).</li>
+          <li><strong>Lock the connection.</strong> Traefik proves the site is genuine with its
+            certificate — that's the padlock in your browser bar.</li>
+          <li><strong>Route to the app.</strong> Traefik reads the address <code>startpage.bit-habit.com</code>
+            and forwards the request to the matching app.</li>
+          <li><strong>Answer.</strong> The startpage app builds the page and sends it back. Done.</li>
+        </ol>
+        <div class="mermaid">
+flowchart TB
+    U["You type startpage.bit-habit.com"] --> DNS["DNS: name to one IP\n158.180.71.122"]
+    DNS --> T["Traefik front door\nports 80 and 443"]
+    T --> TLS["http to https (308)\nthen HTTPS with the cert"]
+    TLS --> R["Read the address\nroute to the app"]
+    R --> APP["startpage app\nreplies with the page"]
+        </div>
+      </section>
 
-      <h2>4 · 배포의 현실 — push 하면 어떻게 live가 되나</h2>
-      <div class="callout">
-        ⚠️ <strong>정직 고지:</strong> 인프라 README는 "ArgoCD 자동동기"라 적혀 있지만 실제로는
-        <strong>ArgoCD 미설치 → 수동 <code>kubectl apply</code></strong>가 현재 배포 방식입니다.
-        (정적 사이트 일부는 GitHub Actions가 서버에 ssh로 <code>git pull</code>.)
-        <br /><em>Honesty note: the README claims ArgoCD auto-sync, but ArgoCD is not installed — deploys are manual <code>kubectl apply</code> today.</em>
-      </div>
-      <div class="concept">
-        <span class="tag">세 가지 "push → live" 방식</span>
-        <ul>
-          <li><strong>cron pull</strong> — 폴링. 단순하나 빌드·피드백 없음. 표준 아님.</li>
-          <li><strong>GitHub Actions (push CI/CD)</strong> — 이벤트 기반. 정적 → Pages, 서버 → ssh pull.</li>
-          <li><strong>ArgoCD (pull GitOps)</strong> — 클러스터가 git 감시·자동동기. k8s 표준, 여기선 <em>아직 미설치</em>.</li>
-        </ul>
-      </div>
+      <section id="s5m">
+        <h2><span class="badge">5 MINUTES</span>The parts, named — and what's running</h2>
+        <p class="tldr">
+          The server runs <strong>k3s</strong>, a small version of Kubernetes. Kubernetes is just a
+          manager that starts apps, restarts them if they crash, and routes traffic to them. Here are
+          its parts, in plain terms.
+        </p>
+        <div class="concept">
+          <span class="tag">the parts</span>
+          <table>
+            <thead><tr><th>Part</th><th>Think of it as</th><th>What it does</th></tr></thead>
+            <tbody>
+              <tr><td><strong>Traefik</strong></td><td>the front door</td><td>receives every request on ports 80 / 443, adds HTTPS, and sends it to the right app</td></tr>
+              <tr><td><strong>Ingress</strong></td><td>the routing list</td><td>the table that says "this address → that app"</td></tr>
+              <tr><td><strong>Service</strong></td><td>a stable inside address</td><td>a fixed name for an app, even after it restarts</td></tr>
+              <tr><td><strong>Pod</strong></td><td>the running app</td><td>the container doing the actual work</td></tr>
+              <tr><td><strong>cert-manager</strong></td><td>the certificate robot</td><td>gets and renews the HTTPS certificate automatically</td></tr>
+              <tr><td><strong>k3s</strong></td><td>the manager</td><td>a small Kubernetes that starts, restarts, and watches every app</td></tr>
+            </tbody>
+          </table>
+        </div>
 
-      <h2>5 · 라이브로 더 깊이</h2>
-      <p class="tldr">정적 설명은 여기까지. 파드 상태·로그·리소스 사용량 같은 <strong>실시간</strong>은 headlamp에서 봐요(GitHub SSO 게이트).</p>
-      <p><a class="btn" href="https://headlamp.bit-habit.com" target="_blank" rel="noopener">headlamp 열기 →</a></p>
+        <h2 style="font-size:1.12rem;margin-top:30px">What's running here</h2>
+        <p class="muted">About 20 apps share this one server. A few you can visit:</p>
+        <div class="concept">
+          <table>
+            <thead><tr><th>Address</th><th>What it is</th></tr></thead>
+            <tbody>
+              <tr><td><code>bit-habit.com</code></td><td>the landing page (static site)</td></tr>
+              <tr><td><code>startpage.bit-habit.com</code></td><td>a personal start dashboard</td></tr>
+              <tr><td><code>blog.bit-habit.com</code></td><td>the blog (Ghost)</td></tr>
+              <tr><td><code>wiki.bit-habit.com</code></td><td>the knowledge base (Wiki.js)</td></tr>
+              <tr><td><code>habit.bit-habit.com</code></td><td>the habit tracker (web app + API)</td></tr>
+              <tr><td><code>plane.bit-habit.com</code></td><td>project management (self-hosted)</td></tr>
+              <tr><td><code>fider.bit-habit.com</code></td><td>feature-request voting</td></tr>
+              <tr><td><code>quali-fit.bit-habit.com</code></td><td>a fitness app</td></tr>
+              <tr><td><code>llm-app-lab.bit-habit.com</code></td><td>an LLM course site</td></tr>
+              <tr><td><code>headlamp.bit-habit.com</code></td><td>the live cluster dashboard (sign-in required)</td></tr>
+            </tbody>
+          </table>
+        </div>
 
-      <h2>6 · 미니 퀴즈</h2>
-      <div class="quiz" data-answer="2">
-        <p>README는 "ArgoCD가 자동 배포"라는데 실제 클러스터를 확인하면?</p>
-        <button>ArgoCD가 정상 동작 — push하면 자동 반영</button>
-        <button>ArgoCD는 다른 서버에서 돈다</button>
-        <button>ArgoCD 미설치 — 실제 배포는 수동 <code>kubectl apply</code></button>
-        <p class="explain muted"><code>argocd</code> 네임스페이스·CRD·파드가 전부 없어요. 문서는 <em>의도</em>, 현실은 수동. 인프라 문서는 늘 클러스터에 직접 물어보며 읽어야 합니다.</p>
-      </div>
+        <div class="callout">
+          🔒 <strong>One certificate for all.</strong> Instead of one HTTPS certificate per site, there is a
+          single <em>wildcard</em> certificate for <code>*.bit-habit.com</code>. Every subdomain shares it,
+          so a new site is HTTPS with zero extra setup.
+        </div>
+      </section>
+
+      <section id="s1h">
+        <h2><span class="badge">1 HOUR</span>Go deeper</h2>
+
+        <p class="tldr"><strong>How a new site gets added</strong></p>
+        <ol>
+          <li>Put the app in the cluster — a small <em>Deployment</em> (the app) and a <em>Service</em> (its inside address).</li>
+          <li>Add one line to the routing list — an <em>Ingress</em> rule: <code>newsite.bit-habit.com → that Service</code>.</li>
+          <li>Apply it (<code>kubectl apply</code>). That's all: the wildcard DNS and wildcard certificate already
+            cover the new subdomain, so it's reachable over HTTPS right away.</li>
+        </ol>
+
+        <div class="concept">
+          <span class="tag">building blocks, precisely</span>
+          <ul>
+            <li><strong>k3s</strong> — a lightweight, single-node Kubernetes. It stores its state in SQLite instead of the usual etcd.</li>
+            <li><strong>Traefik</strong> — the ingress controller. It binds the host's ports 80 and 443 directly and terminates TLS (no separate load balancer).</li>
+            <li><strong>Ingress</strong> — the rules that map each hostname to a Service.</li>
+            <li><strong>Service (ClusterIP)</strong> — a stable in-cluster address for a set of Pods.</li>
+            <li><strong>Pod</strong> — one running instance of an app (one or more containers).</li>
+            <li><strong>cert-manager</strong> — requests and renews the Let's Encrypt certificate using a DNS-01 challenge through AWS Route53.</li>
+          </ul>
+        </div>
+
+        <div class="callout">
+          <strong>Edge facts</strong><br />
+          • Public IP <code>158.180.71.122</code> (private <code>10.0.0.61</code> inside Oracle Cloud).<br />
+          • Traefik holds ports <code>80</code> and <code>443</code> on the host directly.<br />
+          • Plain <code>http</code> → permanent <code>308</code> redirect to <code>https</code>.<br />
+          • One wildcard certificate <code>*.bit-habit.com</code> (Let's Encrypt, DNS-01 via Route53), stored in
+          the Secret <code>tls-secret</code> and auto-renewed before its 90-day expiry.
+        </div>
+
+        <p class="tldr" style="margin-top:26px"><strong>Go further</strong></p>
+        <p>
+          See it live at <a href="https://headlamp.bit-habit.com" target="_blank" rel="noopener">headlamp.bit-habit.com</a>
+          — real pods, logs, and resource use (GitHub sign-in required). All the setup files live in
+          <a href="https://github.com/bookseal/bit-habit-infra" target="_blank" rel="noopener">github.com/bookseal/bit-habit-infra</a>.
+        </p>
+        <p><a class="btn" href="https://headlamp.bit-habit.com" target="_blank" rel="noopener">🔭 Open headlamp →</a></p>
+      </section>
 
       <footer>
-        bit-habit · platform infra · k3s + Traefik + cert-manager on OCI Ampere A1 ·
-        소스: <a href="https://github.com/bookseal/bit-habit-infra" target="_blank" rel="noopener">bit-habit-infra</a>
+        bit-habit · one server, many sites · k3s + Traefik + cert-manager on Oracle Cloud (Ampere A1) ·
+        source: <a href="https://github.com/bookseal/bit-habit-infra" target="_blank" rel="noopener">bit-habit-infra</a>
       </footer>
     </div>
-    <script>
-      document.querySelectorAll(".quiz").forEach((quiz) => {
-        const answer = Number(quiz.dataset.answer);
-        quiz.querySelectorAll("button").forEach((opt, i) => {
-          opt.addEventListener("click", () => {
-            if (quiz.classList.contains("solved")) return;
-            if (i === answer) { opt.classList.add("correct"); quiz.classList.add("solved"); }
-            else { opt.classList.add("wrong"); opt.disabled = true; }
-          });
-        });
-      });
-    </script>
   </body>
 </html>
