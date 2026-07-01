@@ -26,8 +26,6 @@ spec:
               name: habit
             - mountPath: /usr/share/nginx/status
               name: status
-            - mountPath: /usr/share/nginx/flutter
-              name: flutter
             - mountPath: /etc/nginx/conf.d/default.conf
               name: config
               subPath: default.conf
@@ -48,11 +46,6 @@ spec:
         - name: habit
           hostPath:
             path: /var/www/habit
-            type: Directory
-        # Flutter 빌드 결과물
-        - name: flutter
-          hostPath:
-            path: /home/ubuntu/workspace/bithabit_flutter/build/web
             type: Directory
         - name: config
           configMap:

@@ -1,0 +1,11 @@
+# Traefik basic-auth middleware protecting Headlamp (cluster-admin UI).
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: headlamp-auth
+  namespace: headlamp
+spec:
+  basicAuth:
+    secret: headlamp-basicauth
+    realm: headlamp
+    removeHeader: true

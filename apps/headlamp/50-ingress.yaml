@@ -1,0 +1,29 @@
+# Exposes Headlamp at headlamp.bit-habit.com, protected by basic auth.
+# Reuses the wildcard cert (Secret `tls-secret`), replicated into this
+# namespace from `default` — cert-manager renews the source there.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: headlamp
+  namespace: headlamp
+  annotations:
+    kubernetes.io/ingress.class: traefik
+    traefik.ingress.kubernetes.io/router.entrypoints: websecure
+    traefik.ingress.kubernetes.io/router.tls: "true"
+    traefik.ingress.kubernetes.io/router.middlewares: headlamp-headlamp-auth@kubernetescrd
+spec:
+  tls:
+    - hosts:
+        - headlamp.bit-habit.com
+      secretName: tls-secret
+  rules:
+    - host: headlamp.bit-habit.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: headlamp
+                port:
+                  number: 80

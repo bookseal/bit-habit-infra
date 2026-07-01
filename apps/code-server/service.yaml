@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: code-server-svc
+  namespace: default
+spec:
+  ports:
+    - port: 80
+      targetPort: 8081
+---
+apiVersion: v1
+kind: Endpoints
+metadata:
+  name: code-server-svc
+  namespace: default
+subsets:
+  - addresses:
+      - ip: 10.0.0.61
+    ports:
+      - port: 8081
