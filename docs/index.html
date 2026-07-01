@@ -20,6 +20,8 @@
       a:hover { text-decoration: underline; }
       .muted { color: var(--muted); }
       code { background:#eef1f5; padding:1px 5px; border-radius:4px; font-size:.88em; }
+      pre { background:#0f1720; color:#e6edf3; border-radius:10px; padding:14px 16px; overflow:auto; font-size:.82rem; line-height:1.5; margin:14px 0; }
+      pre code { background:none; padding:0; color:inherit; font-size:inherit; }
       .tldr { font-size:1.05rem; }
       .callout { background:#eef4ff; border:1px solid #cfe0ff; border-radius:10px; padding:14px 16px; margin:16px 0; }
       .concept { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:16px 18px; margin:14px 0; }
@@ -151,6 +153,21 @@ flowchart TB
           </table>
         </div>
 
+        <p class="muted">And here is how those parts connect for a single app — a <strong>Deployment</strong>
+          keeps Pods running, a <strong>Service</strong> gives them one address, an <strong>Ingress</strong>
+          maps the hostname to that Service, and Traefik (with a cert from cert-manager) is the door:</p>
+        <div class="mermaid">
+flowchart TB
+    U["Browser"] --> TR["Traefik\nentry, ports 80/443"]
+    CM["cert-manager"] -. "TLS cert" .-> TR
+    TR --> ING["Ingress\nhostname to Service"]
+    ING --> SVC["Service\none stable address"]
+    DEP["Deployment\ndesired replicas"] --> P1["Pod"]
+    DEP --> P2["Pod"]
+    SVC --> P1
+    SVC --> P2
+        </div>
+
         <h2 style="font-size:1.12rem;margin-top:30px">What's running here</h2>
         <p class="muted">About 20 apps share this one server. A few you can visit:</p>
         <div class="concept">
@@ -208,6 +225,42 @@ flowchart TB
           • Plain <code>http</code> → permanent <code>308</code> redirect to <code>https</code>.<br />
           • One wildcard certificate <code>*.bit-habit.com</code> (Let's Encrypt, DNS-01 via Route53), stored in
           the Secret <code>tls-secret</code> and auto-renewed before its 90-day expiry.
+        </div>
+
+        <p class="tldr" style="margin-top:26px"><strong>See the real configs</strong></p>
+        <p class="muted">It is all plain YAML in the public repo. A whole small app is often just this:</p>
+        <pre><code>apiVersion: apps/v1
+kind: Deployment            # keep N copies of my app running
+metadata: { name: myapp }
+spec:
+  replicas: 1
+  selector: { matchLabels: { app: myapp } }
+  template:
+    metadata: { labels: { app: myapp } }
+    spec:
+      containers:
+        - name: web
+          image: nginx:alpine
+---
+apiVersion: v1
+kind: Service               # one stable address for those copies
+metadata: { name: myapp-svc }
+spec:
+  selector: { app: myapp }
+  ports: [{ port: 80, targetPort: 80 }]</code></pre>
+        <p class="muted">The key files that run this platform (click to view on GitHub):</p>
+        <div class="concept">
+          <table>
+            <thead><tr><th>File</th><th>What it defines</th></tr></thead>
+            <tbody>
+              <tr><td><a href="https://github.com/bookseal/bit-habit-infra/blob/main/k3s-bootstrap/traefik-config.yaml" target="_blank" rel="noopener"><code>k3s-bootstrap/traefik-config.yaml</code></a></td><td>the edge — Traefik on host ports 80/443, http→https redirect</td></tr>
+              <tr><td><a href="https://github.com/bookseal/bit-habit-infra/blob/main/base/ingress.yaml" target="_blank" rel="noopener"><code>base/ingress.yaml</code></a></td><td>the routing table — every subdomain → its Service</td></tr>
+              <tr><td><a href="https://github.com/bookseal/bit-habit-infra/blob/main/base/cert-manager/cluster-issuer.yaml" target="_blank" rel="noopener"><code>base/cert-manager/cluster-issuer.yaml</code></a></td><td>how TLS is issued — Let's Encrypt + Route53 DNS-01</td></tr>
+              <tr><td><a href="https://github.com/bookseal/bit-habit-infra/blob/main/base/cert-manager/certificate.yaml" target="_blank" rel="noopener"><code>base/cert-manager/certificate.yaml</code></a></td><td>the wildcard <code>*.bit-habit.com</code> certificate</td></tr>
+              <tr><td><a href="https://github.com/bookseal/bit-habit-infra/blob/main/apps/llm-app-lab/deployment.yaml" target="_blank" rel="noopener"><code>apps/llm-app-lab/deployment.yaml</code></a></td><td>a minimal app — Deployment + Service</td></tr>
+              <tr><td><a href="https://github.com/bookseal/bit-habit-infra/blob/main/apps/gatus/deployment.yaml" target="_blank" rel="noopener"><code>apps/gatus/deployment.yaml</code></a></td><td>the status page — Deployment + Service + ConfigMap</td></tr>
+            </tbody>
+          </table>
         </div>
 
         <p class="tldr" style="margin-top:26px"><strong>Go further</strong></p>
