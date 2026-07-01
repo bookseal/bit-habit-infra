@@ -40,11 +40,20 @@
       .depthnav a:hover { border-color:var(--accent); color:var(--accent); text-decoration:none; }
       .badge { display:inline-block; font-size:.72rem; font-weight:800; letter-spacing:.05em; color:#fff; background:var(--accent); padding:3px 9px; border-radius:999px; vertical-align:middle; margin-right:9px; }
       .chips { display:flex; flex-wrap:wrap; gap:6px; margin:12px 0; }
-      /* live status strip (data from Gatus via same-origin /api) */
-      .statusgrid { display:flex; flex-wrap:wrap; gap:8px; margin:12px 0; }
-      .svc { display:flex; align-items:center; gap:7px; border:1px solid var(--line); border-radius:8px; padding:6px 11px; font-size:.9rem; background:#fff; }
+      /* live status cards (data from Gatus via same-origin /api) */
+      .summary { font-size:.98rem; margin:10px 0 4px; }
+      .grouphead { font-size:.78rem; font-weight:800; letter-spacing:.05em; text-transform:uppercase; color:var(--muted); margin:20px 0 9px; }
+      .cards { display:grid; grid-template-columns:repeat(auto-fill,minmax(215px,1fr)); gap:12px; }
+      .card { border:1px solid var(--line); border-left:3px solid #bbb; border-radius:10px; padding:12px 14px; background:var(--card); }
+      .card.up { border-left-color:#28a745; }
+      .card.down { border-left-color:#e0413a; }
+      .card-top { display:flex; align-items:center; gap:8px; }
+      .card-top strong { flex:1; }
       .dot { width:9px; height:9px; border-radius:50%; background:#bbb; flex:0 0 auto; }
       .dot.up { background:#28a745; } .dot.down { background:#e0413a; }
+      .ms { font-size:.76rem; color:var(--muted); }
+      .card-desc { font-size:.87rem; color:var(--muted); margin:7px 0 8px; }
+      .card-link { font-size:.8rem; }
       .statusnote { font-size:.85rem; }
     </style>
   </head>
@@ -73,7 +82,8 @@
           Each site is checked from the outside every 60 seconds.
           Full status page → <a href="https://status.bit-habit.com" target="_blank" rel="noopener">status.bit-habit.com</a>.
         </p>
-        <div id="statusgrid" class="statusgrid muted">Loading live status…</div>
+        <p id="statussummary" class="summary muted">Loading live status…</p>
+        <div id="statusgrid"></div>
       </section>
 
       <section id="s10">
@@ -218,30 +228,91 @@ flowchart TB
       </footer>
     </div>
     <script>
-      // Pull live status from Gatus, served same-origin at /api (an ingress path
-      // routes infra.bit-habit.com/api → gatus-svc), so there is no CORS issue.
+      // Short description per service (Gatus only knows up/down, not what a site is).
+      var DESC = {
+        "landing (bit-habit.com)": "The landing page",
+        "startpage": "A personal start dashboard",
+        "blog": "The blog (Ghost)",
+        "wiki": "Knowledge base (Wiki.js)",
+        "habit tracker": "Habit tracker (web + API)",
+        "plane": "Project management",
+        "fider": "Feature-request voting",
+        "booktoss": "Book search",
+        "viz": "Data visualizations",
+        "seoul-apt": "Seoul apartment prices",
+        "sentinel": "AI assistant",
+        "daily-seongsu": "A daily data app",
+        "quali-fit": "A fitness app",
+        "llm-app-lab": "LLM course site",
+        "infra": "This page — infra docs"
+      };
+      var GROUPS = { main: "Main sites", apps: "Apps", docs: "Docs" };
+
+      // Data comes same-origin from Gatus at /api (no CORS). Render one card per
+      // service, grouped, with its live dot, response time, description and link.
       fetch("/api/v1/endpoints/statuses")
-        .then((r) => (r.ok ? r.json() : Promise.reject(r.status)))
-        .then((list) => {
-          const el = document.getElementById("statusgrid");
-          el.className = "statusgrid";
-          el.textContent = "";
-          list.forEach((ep) => {
-            const last = ep.results && ep.results[ep.results.length - 1];
-            const up = !!(last && last.success);
-            const cell = document.createElement("div");
-            cell.className = "svc";
-            const dot = document.createElement("span");
-            dot.className = "dot " + (up ? "up" : "down");
-            cell.append(dot, document.createTextNode(ep.name));
-            el.appendChild(cell);
+        .then(function (r) { return r.ok ? r.json() : Promise.reject(r.status); })
+        .then(function (list) {
+          var grid = document.getElementById("statusgrid");
+          grid.textContent = "";
+          var up = 0;
+          var byGroup = {};
+          list.forEach(function (ep) {
+            var g = ep.group || "other";
+            if (!byGroup[g]) byGroup[g] = [];
+            byGroup[g].push(ep);
           });
-          if (!list.length) el.textContent = "No checks configured yet.";
+          Object.keys(byGroup).forEach(function (g) {
+            var head = document.createElement("p");
+            head.className = "grouphead";
+            head.textContent = GROUPS[g] || g;
+            grid.appendChild(head);
+            var cards = document.createElement("div");
+            cards.className = "cards";
+            byGroup[g].forEach(function (ep) {
+              var last = ep.results && ep.results[ep.results.length - 1];
+              var ok = !!(last && last.success);
+              if (ok) up++;
+              var host = last && last.hostname;
+              var ms = last && last.duration ? Math.round(last.duration / 1e6) : null;
+              var card = document.createElement("div");
+              card.className = "card " + (ok ? "up" : "down");
+              var top = document.createElement("div");
+              top.className = "card-top";
+              var dot = document.createElement("span");
+              dot.className = "dot " + (ok ? "up" : "down");
+              var name = document.createElement("strong");
+              name.textContent = ep.name;
+              top.append(dot, name);
+              if (ms != null) {
+                var m = document.createElement("span");
+                m.className = "ms";
+                m.textContent = ms + " ms";
+                top.appendChild(m);
+              }
+              var desc = document.createElement("div");
+              desc.className = "card-desc";
+              desc.textContent = DESC[ep.name] || "";
+              card.append(top, desc);
+              if (host) {
+                var a = document.createElement("a");
+                a.className = "card-link";
+                a.href = "https://" + host;
+                a.target = "_blank";
+                a.rel = "noopener";
+                a.textContent = host + " ↗";
+                card.appendChild(a);
+              }
+              cards.appendChild(card);
+            });
+            grid.appendChild(cards);
+          });
+          var sum = document.getElementById("statussummary");
+          sum.className = "summary";
+          sum.innerHTML = "<strong>" + up + " of " + list.length + "</strong> services up right now.";
         })
-        .catch(() => {
-          const el = document.getElementById("statusgrid");
-          el.className = "statusgrid statusnote muted";
-          el.innerHTML =
+        .catch(function () {
+          document.getElementById("statussummary").innerHTML =
             'Live status is unavailable right now — see ' +
             '<a href="https://status.bit-habit.com" target="_blank" rel="noopener">status.bit-habit.com</a>.';
         });
