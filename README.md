@@ -17,7 +17,47 @@ server running **k3s + Traefik + cert-manager**. All plain YAML, one repo.
   Let's Encrypt via Route53 DNS-01) that every subdomain shares.
 - **Wildcard DNS** (`*.bit-habit.com → the server`) means a new site needs only
   one Ingress rule — no DNS change.
-- Deploys are **manual `kubectl apply`** (no ArgoCD).
+
+## How things deploy
+
+Kubernetes does **not** watch GitHub — it only keeps a declared state true. So
+something outside the cluster has to say "there is new code." Two layers, two
+answers:
+
+| What changed | Lives in | How it reaches the cluster |
+|---|---|---|
+| **App content** (pages, code) | each app's own repo | **automatic** — a GitHub Actions workflow SSHes in on every push to `main` and pulls |
+| **Infrastructure** (Ingress, certs, Deployments) | **this repo** | **manual `kubectl apply`.** It changes rarely, and a bad Ingress can take every site down at once — a human stays in the loop |
+
+The app-side deploy key is pinned in the server's `authorized_keys` with a
+**forced command**, so that key can run one script and nothing else — a leak
+gains an attacker nothing but a redeploy. Three repos ship this way today:
+
+| Repo | Site | What its deploy does |
+|---|---|---|
+| [`portfolio-bithabit`](https://github.com/bookseal/portfolio-bithabit) | `bit-habit.com` | `git pull` — that's the whole deploy |
+| [`llm-app-lab`](https://github.com/bookseal/llm-app-lab) | `llm-app-lab.bit-habit.com` | `git pull` |
+| [`physical-spark`](https://github.com/bookseal/physical-spark) | `physical-spark.bit-habit.com` | pull → rebuild the auth image if `auth/` changed → `kubectl apply` its own manifests ([`ops/deploy.sh`](https://github.com/bookseal/physical-spark/blob/main/ops/deploy.sh)) |
+
+Static sites are live the instant the pull finishes: nginx serves the git
+checkout straight off the disk via a `hostPath` mount, so there is no image to
+build and no Pod to restart (~10s end to end).
+
+> **On ArgoCD:** [`apps/argocd/`](apps/argocd/) and
+> [`docs/argocd-guide.md`](docs/argocd-guide.md) are kept as a **reference — not
+> installed.** There is no `argocd` namespace on the cluster. For a single node
+> run by one person, ArgoCD adds more moving parts than it removes; the
+> self-healing property it is prized for is already had by re-applying manifests
+> on every deploy (`apply` is idempotent).
+
+## Where physical-spark lives
+
+`physical-spark` is the one service whose manifests do **not** live here — they
+ship from [its own repo](https://github.com/bookseal/physical-spark) (`k8s/`,
+`auth/k8s/`) and are applied by its own deploy script. It also brings its own
+Ingress instead of a rule in [`base/ingress.yaml`](base/ingress.yaml). That is a
+deliberate trade: the service stays self-contained and deploys end-to-end from
+one push, at the cost of this repo no longer being the complete picture.
 
 ## Repo layout
 

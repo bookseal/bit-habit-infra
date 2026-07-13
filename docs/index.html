@@ -73,6 +73,7 @@
           <a href="#s10">⏱ 10 seconds</a>
           <a href="#s1m">⏱ 1 minute</a>
           <a href="#s5m">⏱ 5 minutes</a>
+          <a href="#deploy">↑ How code gets here</a>
           <a href="#s1h">⏱ 1 hour</a>
         </div>
         <p><a class="btn" href="#live">● See what's up right now</a></p>
@@ -182,6 +183,7 @@ flowchart TB
               <tr><td><code>plane.bit-habit.com</code></td><td>project management (self-hosted)</td></tr>
               <tr><td><code>fider.bit-habit.com</code></td><td>feature-request voting</td></tr>
               <tr><td><code>quali-fit.bit-habit.com</code></td><td>a fitness app</td></tr>
+              <tr><td><code>physical-spark.bit-habit.com</code></td><td>a Physical AI school — static site + an auth API</td></tr>
               <tr><td><code>llm-app-lab.bit-habit.com</code></td><td>an LLM course site</td></tr>
               <tr><td><code>headlamp.bit-habit.com</code></td><td>the live cluster dashboard (sign-in required)</td></tr>
             </tbody>
@@ -192,6 +194,107 @@ flowchart TB
           🔒 <strong>One certificate for all.</strong> Instead of one HTTPS certificate per site, there is a
           single <em>wildcard</em> certificate for <code>*.bit-habit.com</code>. Every subdomain shares it,
           so a new site is HTTPS with zero extra setup.
+        </div>
+      </section>
+
+      <section id="deploy">
+        <h2><span class="badge">DEPLOYS</span>The other direction — how the code <em>gets</em> here</h2>
+        <p class="tldr">
+          Everything above follows a request <em>inward</em>: browser → Traefik → app. This section
+          follows code <em>outward</em>: laptop → GitHub → server → live. It is the half of the
+          story people most often guess wrong.
+        </p>
+
+        <div class="callout">
+          ⚠️ <strong>Kubernetes does not watch GitHub.</strong> This surprises almost everyone.
+          Kubernetes only keeps a <em>declared</em> state true — "one nginx Pod must be running" —
+          so it restarts crashed Pods and survives reboots. It has no idea GitHub exists and will
+          never notice that you pushed. Something <em>outside</em> the cluster must always be the
+          one to say "there is new code." Here, that something is <strong>GitHub Actions</strong>.
+        </div>
+
+        <p class="tldr" style="margin-top:26px"><strong>Following one <code>git push</code></strong></p>
+        <ol>
+          <li><strong>You push</strong> to <code>main</code>.</li>
+          <li><strong>GitHub Actions wakes up</strong> and opens an SSH connection to the server,
+            using a deploy key kept as a repository secret.</li>
+          <li><strong>The server ignores what Actions asked for.</strong> That key is pinned in
+            <code>authorized_keys</code> with a <em>forced command</em>: no matter what command
+            arrives, only one script runs. Even a leaked key can do nothing else on the box.</li>
+          <li><strong>The script pulls the repo</strong> (<code>git reset --hard origin/main</code>
+            — an exact mirror, so the server never drifts).</li>
+          <li><strong>It is already live.</strong> nginx serves that folder straight off the disk
+            (a <em>hostPath</em> mount), so there is no image to build and no Pod to restart. About
+            ten seconds, end to end.</li>
+        </ol>
+
+        <div class="mermaid">
+flowchart TB
+    P["git push to main"] --> GA["GitHub Actions\nthe only thing watching GitHub"]
+    GA -->|"SSH with a deploy key"| FC["Forced command\nthe key can run one script, nothing else"]
+    FC --> PULL["git reset --hard origin/main\ninto ~/workspace/the-repo"]
+    PULL --> HP["nginx already serves that folder\n(hostPath) — live, no rebuild"]
+    PULL --> IMG["only if the app is a real image:\ndocker build, then rollout restart"]
+        </div>
+
+        <div class="concept">
+          <span class="tag">why it is this fast</span>
+          <p style="margin:0">
+            Most static sites deploy by baking the HTML into a container image, pushing it to a
+            registry, and rolling out new Pods. Here, nginx reads the git checkout on the server's
+            disk directly. So the moment <code>git pull</code> finishes, the new page is being
+            served — the same Pod, untouched, uptime intact. A build step buys nothing when the
+            artifact <em>is</em> the source.
+          </p>
+        </div>
+
+        <p class="tldr" style="margin-top:26px"><strong>Two layers, deployed differently</strong></p>
+        <p class="muted">It matters which of these you changed — they do not travel the same road.</p>
+        <div class="concept">
+          <table>
+            <thead><tr><th>What changed</th><th>Lives in</th><th>How it reaches the cluster</th></tr></thead>
+            <tbody>
+              <tr>
+                <td><strong>App content</strong><br /><span class="muted">pages, code</span></td>
+                <td>each app's own repo</td>
+                <td>automatic — GitHub Actions on every push (see above)</td>
+              </tr>
+              <tr>
+                <td><strong>Infrastructure</strong><br /><span class="muted">Ingress, certs, Deployments</span></td>
+                <td>this repo, <code>bit-habit-infra</code></td>
+                <td>manual — <code>kubectl apply</code> by hand. It changes rarely, and a bad
+                  Ingress can take every site down at once, so a human stays in the loop.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <p class="muted">Three repos ship themselves this way today:</p>
+        <div class="concept">
+          <table>
+            <thead><tr><th>Repo</th><th>Site</th><th>What its deploy does</th></tr></thead>
+            <tbody>
+              <tr><td><code>portfolio-bithabit</code></td><td><code>bit-habit.com</code></td><td><code>git pull</code> — that's the whole deploy</td></tr>
+              <tr><td><code>llm-app-lab</code></td><td><code>llm-app-lab.bit-habit.com</code></td><td><code>git pull</code></td></tr>
+              <tr>
+                <td><a href="https://github.com/bookseal/physical-spark" target="_blank" rel="noopener"><code>physical-spark</code></a></td>
+                <td><code>physical-spark.bit-habit.com</code></td>
+                <td>pull; rebuild the auth image only if <code>auth/</code> changed; then
+                  <code>kubectl apply</code> its own manifests
+                  (<a href="https://github.com/bookseal/physical-spark/blob/main/ops/deploy.sh" target="_blank" rel="noopener"><code>ops/deploy.sh</code></a>)</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="callout">
+          🔁 <strong>Applying the manifests every time makes a deploy self-healing.</strong>
+          <code>kubectl apply</code> is idempotent — re-applying an unchanged file costs one
+          <code>unchanged</code> line — so <code>physical-spark</code> applies its manifests on
+          <em>every</em> deploy, not only when they change. Anything someone poked by hand in the
+          cluster is quietly reset to what git says. The file, not the running cluster, is the
+          source of truth. That is the core idea behind GitOps tools like ArgoCD and Flux,
+          reached here with one extra line and nothing new installed.
         </div>
       </section>
 
@@ -296,6 +399,7 @@ spec:
         "sentinel": "AI assistant",
         "daily-seongsu": "A daily data app",
         "quali-fit": "A fitness app",
+        "physical-spark": "Physical AI school (site + auth)",
         "llm-app-lab": "LLM course site",
         "infra": "This page — infra docs"
       };

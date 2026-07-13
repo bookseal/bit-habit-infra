@@ -82,6 +82,11 @@ data:
         # quali-fit sits behind an auth gate (401 = gate is up), so accept any
         # non-server-error response as "up".
         conditions: ["[STATUS] < 500"]
+      - name: physical-spark
+        group: apps
+        url: "https://physical-spark.bit-habit.com"
+        interval: 60s
+        conditions: ["[STATUS] < 400"]
       - name: llm-app-lab
         group: docs
         url: "https://llm-app-lab.bit-habit.com"
