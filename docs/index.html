@@ -82,7 +82,7 @@
       .gap p { margin:4px 0; }
       .scorecard td:first-child { white-space:nowrap; }
       /* ---- sticky sidebar table of contents ---- */
-      .page { display:grid; grid-template-columns:236px minmax(0,860px); gap:40px; justify-content:center; }
+      .page { display:grid; grid-template-columns:210px minmax(0,860px); gap:32px; justify-content:center; }
       .toc { position:sticky; top:0; align-self:start; max-height:100vh; overflow-y:auto; padding:52px 0 40px; }
       .toc-title { font-size:.72rem; font-weight:800; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); margin:0 0 12px; }
       .toc ol { list-style:none; margin:0; padding:0; }
@@ -92,7 +92,7 @@
       .toc a.active { color:var(--accent); border-left-color:var(--accent); font-weight:700; background:#eef4ff; }
       .toc .sub { font-size:.82rem; padding-left:24px; }
       /* below the sidebar breakpoint: single column, the hero chips are the nav */
-      @media (max-width: 1180px) {
+      @media (max-width: 1000px) {
         .page { display:block; }
         .toc { display:none; }
       }
