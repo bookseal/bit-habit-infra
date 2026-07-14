@@ -8,6 +8,10 @@
       import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
       mermaid.initialize({ startOnLoad: true, theme: "neutral" });
     </script>
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/3.7.2/animate.min.css"
+    />
     <style>
       :root { --ink:#1b1f24; --muted:#5b6570; --line:#e3e7ec; --bg:#fafbfc; --accent:#2d6cdf; --card:#fff; }
       * { box-sizing: border-box; }
@@ -57,6 +61,17 @@
       .card-desc { font-size:.87rem; color:var(--muted); margin:7px 0 8px; }
       .card-link { font-size:.8rem; }
       .statusnote { font-size:.85rem; }
+      /* highlight the load-bearing sentences */
+      mark, .hl { background:linear-gradient(transparent 58%, #ffe58a 58%); padding:0 2px; border-radius:2px; color:inherit; }
+      .callout.good { background:#eafaf0; border-color:#b8e6c8; }
+      .callout.warn { background:#fff7e6; border-color:#ffe1a8; }
+      .badge.today { background:#0f9d58; }
+      .inv { display:grid; grid-template-columns:repeat(auto-fit,minmax(120px,1fr)); gap:10px; margin:14px 0; }
+      .inv .n { border:1px solid var(--line); border-radius:10px; padding:12px 14px; background:var(--card); }
+      .inv .n b { display:block; font-size:1.35rem; letter-spacing:-.01em; }
+      .inv .n span { font-size:.82rem; color:var(--muted); }
+      /* AniJS reveal targets are fully visible without JS — animation is enhancement only */
+      @media (prefers-reduced-motion: reduce){ .animated{ animation:none !important; } }
     </style>
   </head>
   <body>
@@ -74,6 +89,7 @@
           <a href="#s1m">⏱ 1 minute</a>
           <a href="#s5m">⏱ 5 minutes</a>
           <a href="#deploy">↑ How code gets here</a>
+          <a href="#config">🗂 Where configs live</a>
           <a href="#s1h">⏱ 1 hour</a>
         </div>
         <p><a class="btn" href="#live">● See what's up right now</a></p>
@@ -92,7 +108,7 @@
       <section id="s10">
         <h2><span class="badge">10 SECONDS</span>The whole thing in one sentence</h2>
         <p class="tldr">
-          One small server runs every <code>bit-habit.com</code> website. You type an address,
+          <mark>One small server runs every <code>bit-habit.com</code> website.</mark> You type an address,
           it finds the right app, and sends the page back.
         </p>
         <div class="chips">
@@ -298,6 +314,80 @@ flowchart TB
         </div>
       </section>
 
+      <section id="config">
+        <h2><span class="badge today">TODAY</span>Where every setting actually lives</h2>
+        <p class="tldr">
+          A fair question to ask of any platform: <strong>is the whole thing in one git repo?</strong>
+          The honest answer here — <mark>the core is; a few edges are not, yet.</mark> This is the real
+          map as it stands today, drift and all.
+        </p>
+
+        <div class="mermaid">
+flowchart TB
+    subgraph ONE["bit-habit-infra — the single infra repo"]
+      EDGE["Edge + TLS + routing\nTraefik · cert-manager · ingress.yaml"]
+      APPS["~15 app manifests\nghost · wikijs · gatus · sentinel · llm-app-lab · …"]
+    end
+    subgraph SELF["An app's own repo (by design)"]
+      PS["physical-spark\nships its own k8s/ + deploy.sh"]
+    end
+    subgraph OUT["Applied from local folders (not yet in a repo)"]
+      PLANE["plane · 12 Deployments"]
+      QF["quali-fit"]
+      FIDER["fider"]
+    end
+    K["k3s cluster\n(the running truth)"]
+    ONE ==>|"kubectl apply, by hand"| K
+    SELF -->|"its own deploy.sh"| K
+    OUT -.->|"applied locally"| K
+        </div>
+
+        <div class="callout good">
+          ✅ <strong>Fully in the one repo — the high blast-radius parts.</strong> The pieces that could
+          take <em>every</em> site down at once — the edge (Traefik), TLS (the wildcard cert), and the
+          routing table (<code>base/ingress.yaml</code>) — plus most app manifests all live in
+          <code>bit-habit-infra</code>. <mark>The thing that most needs one source of truth has one.</mark>
+        </div>
+
+        <div class="callout warn">
+          ⚠️ <strong>Not in the one repo yet.</strong> <code>plane</code>, <code>quali-fit</code> and
+          <code>fider</code> are applied from their own folders on the server, and
+          <code>physical-spark</code> ships from
+          <a href="https://github.com/bookseal/physical-spark" target="_blank" rel="noopener">its own repo</a>
+          on purpose. So the infra repo is the source of truth for the <em>platform</em>, but
+          <mark>not yet a complete inventory of everything running.</mark> Folding the local-only
+          services into git is the next step — and the cheap one.
+        </div>
+
+        <p class="tldr" style="margin-top:26px"><strong>The cluster, right now</strong></p>
+        <div class="inv">
+          <div class="n"><b>1</b><span>node · OCI Ampere A1 (ARM)</span></div>
+          <div class="n"><b>9</b><span>namespaces</span></div>
+          <div class="n"><b>~40</b><span>Deployments</span></div>
+          <div class="n"><b>14</b><span>Ingress routes</span></div>
+          <div class="n"><b>1</b><span>wildcard TLS cert</span></div>
+          <div class="n"><b>$0</b><span>per month</span></div>
+        </div>
+
+        <div class="concept">
+          <span class="tag">the industry standard — and where this sits</span>
+          <p style="margin:0 0 8px">
+            The standard goal is one line: <mark>the running cluster equals what git says</mark>, with
+            nothing that exists only on one machine. GitOps tools —
+            <strong>ArgoCD</strong> or <strong>Flux</strong> — enforce it by continuously watching a repo
+            and re-applying it, so manual cluster edits are reverted automatically.
+          </p>
+          <p style="margin:0">
+            For one node run by one person, ArgoCD is <em>deliberately not installed</em>
+            (<a href="https://github.com/bookseal/bit-habit-infra/tree/main/apps/argocd" target="_blank" rel="noopener">kept only as reference</a>):
+            it adds more moving parts than it removes, and re-applying manifests on every deploy already
+            buys the self-healing that makes GitOps worth having. The one genuine gap versus the standard
+            is the handful of services still applied from local folders — closing that, not adopting a new
+            tool, is what moves this closer to the mark.
+          </p>
+        </div>
+      </section>
+
       <section id="s1h">
         <h2><span class="badge">1 HOUR</span>Go deeper</h2>
 
@@ -379,7 +469,8 @@ spec:
       </section>
 
       <footer>
-        bit-habit · one server, many sites · k3s + Traefik + cert-manager on Oracle Cloud (Ampere A1) ·
+        bit-habit · 1 server · 9 namespaces · ~40 Deployments · one wildcard cert · $0/month ·
+        k3s + Traefik + cert-manager on Oracle Cloud (Ampere A1) ·
         source: <a href="https://github.com/bookseal/bit-habit-infra" target="_blank" rel="noopener">bit-habit-infra</a>
       </footer>
     </div>
@@ -473,6 +564,42 @@ spec:
             'Live status is unavailable right now — see ' +
             '<a href="https://status.bit-habit.com" target="_blank" rel="noopener">status.bit-habit.com</a>.';
         });
+    </script>
+
+    <!-- AniJS: scroll-reveal for the diagrams and callouts. Progressive
+         enhancement — every element is fully visible without this; the library
+         only adds a fade-in-up as it scrolls into view. -->
+    <script src="https://cdn.jsdelivr.net/gh/anijs/anijs@master/dist/anijs-min.js"></script>
+    <script src="https://cdn.jsdelivr.net/gh/anijs/anijs@master/dist/helpers/scrollreveal/anijs-helper-scrollreveal-min.js"></script>
+    <script>
+      (function () {
+        function boot() {
+          try {
+            if (typeof AniJS === "undefined") return;
+            var reduce =
+              window.matchMedia &&
+              window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+            if (reduce) return; // honor the OS "reduce motion" setting
+            var reveal = "if: scroll, do: fadeInUp animated, before: scrollReveal";
+            document
+              .querySelectorAll(".mermaid, .callout, .concept, .inv")
+              .forEach(function (el) {
+                if (!el.getAttribute("data-anijs")) el.setAttribute("data-anijs", reveal);
+              });
+            AniJS.run();
+            // Nudge so blocks already in view on load reveal too.
+            window.dispatchEvent(new Event("scroll"));
+            setTimeout(function () {
+              window.dispatchEvent(new Event("scroll"));
+            }, 200);
+          } catch (e) {
+            /* animation is enhancement only — never block the page on it */
+          }
+        }
+        if (document.readyState === "loading")
+          document.addEventListener("DOMContentLoaded", boot);
+        else boot();
+      })();
     </script>
   </body>
 </html>
