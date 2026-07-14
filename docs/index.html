@@ -81,11 +81,43 @@
       .gap h4 { margin:0 0 4px; font-size:1.02rem; }
       .gap p { margin:4px 0; }
       .scorecard td:first-child { white-space:nowrap; }
+      /* ---- sticky sidebar table of contents ---- */
+      .page { display:grid; grid-template-columns:236px minmax(0,860px); gap:40px; justify-content:center; }
+      .toc { position:sticky; top:0; align-self:start; max-height:100vh; overflow-y:auto; padding:52px 0 40px; }
+      .toc-title { font-size:.72rem; font-weight:800; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); margin:0 0 12px; }
+      .toc ol { list-style:none; margin:0; padding:0; }
+      .toc li { margin:0; }
+      .toc a { display:block; padding:6px 12px; border-left:2px solid var(--line); color:var(--muted); font-size:.88rem; line-height:1.35; }
+      .toc a:hover { color:var(--accent); border-left-color:var(--accent); text-decoration:none; background:#f2f5f9; }
+      .toc a.active { color:var(--accent); border-left-color:var(--accent); font-weight:700; background:#eef4ff; }
+      .toc .sub { font-size:.82rem; padding-left:24px; }
+      /* below the sidebar breakpoint: single column, the hero chips are the nav */
+      @media (max-width: 1180px) {
+        .page { display:block; }
+        .toc { display:none; }
+      }
       /* AniJS reveal targets are fully visible without JS — animation is enhancement only */
       @media (prefers-reduced-motion: reduce){ .animated{ animation:none !important; } }
     </style>
   </head>
   <body>
+   <div class="page">
+    <nav class="toc" aria-label="Table of contents">
+      <p class="toc-title">On this page</p>
+      <ol>
+        <li><a href="#live">● Live status</a></li>
+        <li><a href="#s10">10 seconds — the whole thing</a></li>
+        <li><a href="#s1m">1 minute — one request</a></li>
+        <li><a href="#s5m">5 minutes — the parts</a></li>
+        <li><a href="#deploy">How code gets here</a></li>
+        <li><a href="#config">Where settings live</a></li>
+        <li><a href="#paths">Every config path</a></li>
+        <li><a href="#gitops">ArgoCD &amp; GitOps</a></li>
+        <li><a href="#grow">What to grow</a></li>
+        <li><a href="#glossary">Every term explained</a></li>
+        <li><a href="#s1h">1 hour — go deeper</a></li>
+      </ol>
+    </nav>
     <div class="wrap">
       <header class="hero">
         <p class="muted">bit-habit · platform infrastructure</p>
@@ -213,7 +245,7 @@ flowchart TB
               <tr><td><code>habit.bit-habit.com</code></td><td>the habit tracker (web app + API)</td></tr>
               <tr><td><code>plane.bit-habit.com</code></td><td>project management (self-hosted)</td></tr>
               <tr><td><code>fider.bit-habit.com</code></td><td>feature-request voting</td></tr>
-              <tr><td><code>quali-fit.bit-habit.com</code></td><td>a fitness app</td></tr>
+              <tr><td><code>quali-fit.bit-habit.com</code></td><td>an explainable staffing recommender (sign-in required)</td></tr>
               <tr><td><code>physical-spark.bit-habit.com</code></td><td>a Physical AI school — static site + an auth API</td></tr>
               <tr><td><code>llm-app-lab.bit-habit.com</code></td><td>an LLM course site</td></tr>
               <tr><td><code>headlamp.bit-habit.com</code></td><td>the live cluster dashboard (sign-in required)</td></tr>
@@ -333,45 +365,46 @@ flowchart TB
         <h2><span class="badge today">TODAY</span>Where every setting actually lives</h2>
         <p class="tldr">
           A fair question to ask of any platform: <strong>is the whole thing in one git repo?</strong>
-          The honest answer here — <mark>the core is; a few edges are not, yet.</mark> This is the real
-          map as it stands today, drift and all.
+          Almost. <mark>Every service that matters is in git — either this repo, or its own.</mark>
+          What is left over is small, and worth naming precisely rather than worrying about.
         </p>
 
         <div class="mermaid">
 flowchart TB
-    subgraph ONE["bit-habit-infra — the single infra repo"]
+    subgraph ONE["bit-habit-infra — the infra repo"]
       EDGE["Edge + TLS + routing\nTraefik · cert-manager · ingress.yaml"]
-      APPS["~15 app manifests\nghost · wikijs · gatus · sentinel · llm-app-lab · …"]
+      APPS["17 app manifests\nghost · wikijs · gatus · sentinel · llm-app-lab · …"]
     end
-    subgraph SELF["An app's own repo (by design)"]
-      PS["physical-spark\nships its own k8s/ + deploy.sh"]
+    subgraph SELF["The app's own repo — a normal pattern"]
+      PS["physical-spark\nk8s/ + deploy.sh"]
+      QF["quali-fit\nk8s/ in KIBA-Automation/quali-fit"]
     end
-    subgraph OUT["Applied from local folders (not yet in a repo)"]
-      PLANE["plane · 12 Deployments"]
-      QF["quali-fit"]
-      FIDER["fider"]
+    subgraph OFF["Off-the-shelf apps — a few YAML files on the server"]
+      PLANE["plane · makeplane/plane"]
+      FIDER["fider · getfider/fider"]
     end
     K["k3s cluster\n(the running truth)"]
     ONE ==>|"kubectl apply, by hand"| K
-    SELF -->|"its own deploy.sh"| K
-    OUT -.->|"applied locally"| K
+    SELF -->|"its own deploy script"| K
+    OFF -.->|"applied by hand, rarely"| K
         </div>
 
         <div class="callout good">
-          ✅ <strong>Fully in the one repo — the high blast-radius parts.</strong> The pieces that could
-          take <em>every</em> site down at once — the edge (Traefik), TLS (the wildcard cert), and the
-          routing table (<code>base/ingress.yaml</code>) — plus most app manifests all live in
-          <code>bit-habit-infra</code>. <mark>The thing that most needs one source of truth has one.</mark>
+          ✅ <strong>Everything with a blast radius is in git.</strong> The parts that could take
+          <em>every</em> site down at once — the edge (Traefik), TLS (the wildcard cert), and the routing
+          table (<code>base/ingress.yaml</code>) — plus 17 app manifests live in
+          <code>bit-habit-infra</code>. Two apps keep their manifests in their own repo alongside their
+          code (<code>physical-spark</code>, <code>quali-fit</code>), which is a perfectly standard
+          layout, not a gap. <mark>Nothing that matters exists only on this disk.</mark>
         </div>
 
         <div class="callout warn">
-          ⚠️ <strong>Not in the one repo yet.</strong> <code>plane</code>, <code>quali-fit</code> and
-          <code>fider</code> are applied from their own folders on the server, and
-          <code>physical-spark</code> ships from
-          <a href="https://github.com/bookseal/physical-spark" target="_blank" rel="noopener">its own repo</a>
-          on purpose. So the infra repo is the source of truth for the <em>platform</em>, but
-          <mark>not yet a complete inventory of everything running.</mark> Folding the local-only
-          services into git is the next step — and the cheap one.
+          ⚠️ <strong>The leftovers, named honestly.</strong> <code>plane</code> and <code>fider</code>
+          are <em>off-the-shelf</em> apps — stock images (<code>makeplane/plane</code>,
+          <code>getfider/fider</code>) driven by a couple of hand-written YAML files that sit in a home
+          directory and are in no repo. They are also barely used. Losing those files would mean
+          rewriting a Deployment and a Service from a public project's docs — an hour, not a disaster.
+          <mark>Worth tidying eventually; not worth calling a risk.</mark>
         </div>
 
         <p class="tldr" style="margin-top:26px"><strong>The cluster, right now</strong></p>
@@ -396,9 +429,9 @@ flowchart TB
             For one node run by one person, ArgoCD is <em>deliberately not installed</em>
             (<a href="https://github.com/bookseal/bit-habit-infra/tree/main/apps/argocd" target="_blank" rel="noopener">kept only as reference</a>):
             it adds more moving parts than it removes, and re-applying manifests on every deploy already
-            buys the self-healing that makes GitOps worth having. The one genuine gap versus the standard
-            is the handful of services still applied from local folders — closing that, not adopting a new
-            tool, is what moves this closer to the mark.
+            buys the self-healing that makes GitOps worth having. Measured against the standard, this
+            platform is closer than it looks — <mark>the remaining gap is secrets, not services.</mark>
+            See <a href="#grow">what to grow</a>.
           </p>
         </div>
       </section>
@@ -407,22 +440,22 @@ flowchart TB
         <h2><span class="badge paths">PATHS</span>Every config, and exactly where it lives</h2>
         <p class="tldr">
           "Where is that configured?" is the question you actually ask at 2am. There are
-          <mark>three places a setting can live here</mark>, and only one of them is the git repo.
+          <mark>three places a setting can live here</mark>, and only one of them is this git repo.
           Here is all three, with real paths.
         </p>
 
         <div class="mermaid">
 flowchart TB
-    R["1 · The git repo\nbit-habit-infra"]
-    H["2 · The host, outside the repo\nk3s's own directories"]
-    L["3 · Nowhere — local folders only\nplane · quali-fit · fider"]
+    R["1 · This git repo\nbit-habit-infra"]
+    A["2 · An app's own git repo\nphysical-spark · quali-fit"]
+    H["3 · The host, outside any repo\nk3s's own directories"]
     K["k3s cluster"]
     R -->|"kubectl apply, by hand"| K
+    A -->|"its own deploy script"| K
     H -->|"k3s auto-applies this folder"| K
-    L -->|"kubectl apply, by hand"| K
         </div>
 
-        <p class="tldr" style="margin-top:26px"><strong>1 · In the git repo</strong></p>
+        <p class="tldr" style="margin-top:26px"><strong>1 · In this git repo</strong></p>
         <p class="muted">
           On GitHub as
           <a href="https://github.com/bookseal/bit-habit-infra" target="_blank" rel="noopener">bookseal/bit-habit-infra</a>,
@@ -445,7 +478,34 @@ flowchart TB
           </table>
         </div>
 
-        <p class="tldr" style="margin-top:26px"><strong>2 · On the host — k3s's own directories</strong></p>
+        <p class="tldr" style="margin-top:26px"><strong>2 · In the app's own git repo</strong></p>
+        <p class="muted">
+          Two services keep their Kubernetes manifests next to their code, and deploy themselves.
+          This is a normal, defensible layout — the service stays self-contained, at the cost of this
+          repo no longer being the complete picture.
+        </p>
+        <div class="concept">
+          <table>
+            <thead><tr><th>Service</th><th>Repo · path</th></tr></thead>
+            <tbody>
+              <tr>
+                <td><code>physical-spark</code></td>
+                <td><a href="https://github.com/bookseal/physical-spark" target="_blank" rel="noopener">bookseal/physical-spark</a>
+                  → <code class="path">k8s/</code>, <code class="path">auth/k8s/</code>, applied by its own
+                  <code class="path">ops/deploy.sh</code>. It even brings its own Ingress.</td>
+              </tr>
+              <tr>
+                <td><code>quali-fit</code></td>
+                <td><a href="https://github.com/KIBA-Automation/quali-fit" target="_blank" rel="noopener">KIBA-Automation/quali-fit</a>
+                  → <code class="path">k8s/</code> (namespace, PVC, deployment, service, middleware, ingress).
+                  The image is tagged with the git commit it was built from, so a running Pod always names
+                  its own source.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <p class="tldr" style="margin-top:26px"><strong>3 · On the host — k3s's own directories</strong></p>
         <p class="muted">These are not in the repo, and mostly cannot be. They belong to k3s itself.</p>
         <div class="concept">
           <table>
@@ -467,18 +527,16 @@ flowchart TB
           </table>
         </div>
 
-        <p class="tldr" style="margin-top:26px"><strong>3 · In no git at all</strong></p>
+        <p class="tldr" style="margin-top:26px"><strong>And the leftovers</strong></p>
         <div class="callout warn">
-          ⚠️ <strong>These services run in production and exist in no repository — not this one, not their own.</strong>
-          They are loose YAML files in a home directory, applied by hand:
-          <ul style="margin:10px 0 6px">
-            <li><code class="path">/home/ubuntu/plane/k8s/</code> — <code>plane.yaml</code>, <code>plane-alias-services.yaml</code> (12 Deployments: project management)</li>
-            <li><code class="path">/home/ubuntu/quali-fit/k8s/</code> — namespace, PVC, deployment, service, ingress, basic-auth secret</li>
-            <li><code class="path">/home/ubuntu/fider/fider.yaml</code> — feature-request voting</li>
-            <li><code class="path">/home/ubuntu/k8s-backup/</code> — ad-hoc copies of certs and secrets</li>
-          </ul>
-          <mark>If this server's disk died right now, those three services could not be rebuilt.</mark>
-          Everything else could be restored from GitHub. This — not ArgoCD — is the real gap.
+          ⚠️ <strong>Two off-the-shelf apps are driven by YAML that lives in no repo.</strong>
+          <code class="path">/home/ubuntu/plane/k8s/</code> and
+          <code class="path">/home/ubuntu/fider/fider.yaml</code> deploy stock upstream images
+          (<code>makeplane/plane</code>, <code>getfider/fider</code>) — a Deployment, a Service, a
+          Postgres. Nothing bespoke, nothing precious, and both are barely used.
+          <mark>Recreating them from the upstream docs is an hour of work, so this is a tidiness item,
+          not a risk.</mark> The <em>real</em> thing still outside git is secrets — see
+          <a href="#grow">what to grow</a>.
         </div>
       </section>
 
@@ -580,24 +638,12 @@ kubectl apply -f apps/argocd/application.yaml</code></pre>
         <h2><span class="badge grow">THE GAP</span>What to grow, in order</h2>
         <p class="tldr">
           Honest scorecard: what this platform would need before GitOps is even <em>possible</em>,
-          ranked by what actually matters. <mark>Note that the top item has nothing to do with ArgoCD.</mark>
+          ranked by what actually matters. <mark>There is exactly one real blocker, and it is not
+          the services — it is the secrets.</mark>
         </p>
 
         <div class="gap now">
-          <h4><span class="prio p1">DO THIS FIRST</span> &nbsp;Get every manifest into git</h4>
-          <p><strong>Today:</strong> <code>plane</code>, <code>quali-fit</code> and <code>fider</code>
-            live in home-directory folders that are not repositories at all.</p>
-          <p><strong>Why it comes first:</strong> ArgoCD can only sync what is in a repo — so this blocks
-            GitOps entirely. But more importantly, <mark>it is the one item that is worth doing even if
-            ArgoCD is never installed.</mark> It converts "the server's disk is the backup" into
-            "GitHub is the backup."</p>
-          <p><strong>The work:</strong> move each <code>k8s/</code> folder into
-            <code class="path">apps/</code> in this repo (or give each service its own repo, like
-            physical-spark). An afternoon, at most.</p>
-        </div>
-
-        <div class="gap">
-          <h4><span class="prio p1">BLOCKER</span> &nbsp;Decide how secrets get into git</h4>
+          <h4><span class="prio p1">THE ONE BLOCKER</span> &nbsp;Decide how secrets get into git</h4>
           <p><strong>Today:</strong> real secrets are gitignored and applied by hand — the Route53 keys,
             quali-fit's basic-auth, oauth2-proxy's client secret. Git holds only redacted
             <code>*.example.yaml</code> templates.</p>
@@ -613,6 +659,16 @@ kubectl apply -f apps/argocd/application.yaml</code></pre>
             <li><strong>External Secrets</strong> — keep secrets in AWS/Vault and sync them in. Most
               robust, most moving parts. Overkill here.</li>
           </ul>
+        </div>
+
+        <div class="gap">
+          <h4><span class="prio p3">TIDYING</span> &nbsp;Commit the two leftover YAML files</h4>
+          <p><strong>Today:</strong> <code>plane</code> and <code>fider</code> are deployed from YAML that
+            sits in a home directory and is in no repo. Both are stock upstream apps, and barely used.</p>
+          <p><strong>Why it is low on this list:</strong> ArgoCD can only sync what is in a repo, so
+            strictly these would have to move before it could manage them. But there is nothing bespoke
+            in them — <mark>losing them costs an hour with the upstream docs, not a service.</mark>
+            Drop them in <code class="path">apps/</code> whenever it is convenient.</p>
         </div>
 
         <div class="gap">
@@ -635,10 +691,10 @@ kubectl apply -f apps/argocd/application.yaml</code></pre>
 
         <div class="gap">
           <h4><span class="prio p3">LATER</span> &nbsp;Then, and only then, consider ArgoCD</h4>
-          <p>With every manifest in git, secrets encrypted in git, and namespaces per app, installing
-            ArgoCD becomes the five commands above and it just works. Do it in that order and it is a
-            calm afternoon. Do it in the reverse order and you spend a week fighting a controller that
-            keeps trying to sync a repo that does not contain the truth.</p>
+          <p>With secrets encrypted in git and namespaces per app, installing ArgoCD becomes the five
+            commands above and it just works. Do it in that order and it is a calm afternoon. Do it in
+            the reverse order and you spend a week fighting a controller that keeps trying to sync a
+            repo that does not contain the truth.</p>
         </div>
 
         <div class="concept">
@@ -648,8 +704,9 @@ kubectl apply -f apps/argocd/application.yaml</code></pre>
             <tbody>
               <tr><td>Edge, TLS, routing</td><td>✅ in git</td><td>✅ already there</td></tr>
               <tr><td>Most app manifests</td><td>✅ in git (17 apps)</td><td>✅ already there</td></tr>
-              <tr><td>plane · quali-fit · fider</td><td>❌ <strong>in no git at all</strong></td><td>must be in a repo</td></tr>
-              <tr><td>Secrets</td><td>❌ gitignored, applied by hand</td><td>encrypted <em>in</em> git (Sealed Secrets)</td></tr>
+              <tr><td>physical-spark · quali-fit</td><td>✅ in their own git repos</td><td>✅ fine — ArgoCD reads many repos</td></tr>
+              <tr><td>plane · fider</td><td>⚠️ stock apps, YAML in no repo</td><td>commit them — an hour, low stakes</td></tr>
+              <tr><td>Secrets</td><td>❌ <strong>gitignored, applied by hand</strong></td><td>encrypted <em>in</em> git (Sealed Secrets)</td></tr>
               <tr><td>Namespaces</td><td>⚠️ mostly one shared <code>default</code></td><td>one per app, so prune is safe</td></tr>
               <tr><td>Self-healing</td><td>✅ <code>kubectl apply</code> on every deploy</td><td>✅ already have the property</td></tr>
               <tr><td>Host-level (Traefik, CoreDNS)</td><td>manual <code>sudo cp</code></td><td>stays manual — out of scope, by design</td></tr>
@@ -659,9 +716,9 @@ kubectl apply -f apps/argocd/application.yaml</code></pre>
 
         <div class="callout good">
           ✅ <strong>The takeaway.</strong> The gap between here and "industry standard" is not a missing
-          tool. It is three services that exist only on one disk, and a secrets story.
-          <mark>Fix those two things and this platform is GitOps-ready — whether or not ArgoCD is ever
-          installed.</mark>
+          tool, and it is not the services — every service that matters is already in a repo.
+          <mark>It is one thing: secrets are the only part of this platform that git does not know
+          about.</mark> Close that and this is GitOps-ready, whether or not ArgoCD is ever installed.
         </div>
       </section>
 
@@ -837,6 +894,7 @@ spec:
         source: <a href="https://github.com/bookseal/bit-habit-infra" target="_blank" rel="noopener">bit-habit-infra</a>
       </footer>
     </div>
+   </div>
     <script>
       // Short description per service (Gatus only knows up/down, not what a site is).
       var DESC = {
@@ -852,7 +910,7 @@ spec:
         "seoul-apt": "Seoul apartment prices",
         "sentinel": "AI assistant",
         "daily-seongsu": "A daily data app",
-        "quali-fit": "A fitness app",
+        "quali-fit": "Explainable staffing recommender",
         "physical-spark": "Physical AI school (site + auth)",
         "llm-app-lab": "LLM course site",
         "infra": "This page — infra docs"
@@ -927,6 +985,41 @@ spec:
             'Live status is unavailable right now — see ' +
             '<a href="https://status.bit-habit.com" target="_blank" rel="noopener">status.bit-habit.com</a>.';
         });
+    </script>
+
+    <script>
+      // Sidebar scroll-spy: highlight whichever section you're currently reading.
+      // Progressive enhancement — the links work fine without it.
+      (function () {
+        var links = Array.prototype.slice.call(document.querySelectorAll(".toc a"));
+        if (!links.length || !("IntersectionObserver" in window)) return;
+        var byId = {};
+        links.forEach(function (a) {
+          var el = document.querySelector(a.getAttribute("href"));
+          if (el) byId[el.id] = a;
+        });
+        var visible = {};
+        var obs = new IntersectionObserver(
+          function (entries) {
+            entries.forEach(function (e) {
+              visible[e.target.id] = e.isIntersecting;
+            });
+            var current = null;
+            Object.keys(byId).forEach(function (id) {
+              if (visible[id] && !current) current = id;
+            });
+            links.forEach(function (a) {
+              a.classList.remove("active");
+            });
+            if (current && byId[current]) byId[current].classList.add("active");
+          },
+          // A section counts as "current" once it reaches the upper third of the viewport.
+          { rootMargin: "0px 0px -66% 0px", threshold: 0 }
+        );
+        Object.keys(byId).forEach(function (id) {
+          obs.observe(document.getElementById(id));
+        });
+      })();
     </script>
 
     <!-- AniJS: scroll-reveal for the diagrams and callouts. Progressive
