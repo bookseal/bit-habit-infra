@@ -73,6 +73,18 @@
       .badge.paths { background:#6f42c1; }
       .badge.gitops { background:#e36209; }
       .badge.grow { background:#c0392b; }
+      .badge.retro { background:#0b7285; }
+      /* incident retrospective (START) */
+      .star { border-left:3px solid #0b7285; padding:2px 0 2px 15px; margin:22px 0; }
+      .star > h3 { margin:0 0 6px; font-size:1.1rem; display:flex; align-items:center; gap:10px; }
+      .star p { margin:6px 0; }
+      .letter { display:inline-flex; align-items:center; justify-content:center; width:26px; height:26px;
+                border-radius:7px; background:#0b7285; color:#fff; font-size:.85rem; font-weight:800; flex:0 0 auto; }
+      .star .sub { font-size:.74rem; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--muted); }
+      .timeline td:first-child { white-space:nowrap; font-variant-numeric:tabular-nums; color:var(--muted); }
+      .lesson { border:1px solid var(--line); border-radius:10px; padding:14px 16px; margin:12px 0; background:var(--card); }
+      .lesson h4 { margin:0 0 6px; font-size:1rem; }
+      .lesson .why { font-size:.9rem; color:var(--muted); margin:6px 0 0; }
       td .path, .path { font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:.84em; }
       .prio { display:inline-block; font-size:.68rem; font-weight:800; letter-spacing:.04em; padding:2px 7px; border-radius:999px; color:#fff; white-space:nowrap; }
       .p1 { background:#c0392b; } .p2 { background:#e36209; } .p3 { background:#8a94a0; }
@@ -114,6 +126,7 @@
         <li><a href="#paths">Every config path</a></li>
         <li><a href="#gitops">ArgoCD &amp; GitOps</a></li>
         <li><a href="#grow">What to grow</a></li>
+        <li><a href="#retro">Case study: an outage</a></li>
         <li><a href="#glossary">Every term explained</a></li>
         <li><a href="#s1h">1 hour — go deeper</a></li>
       </ol>
@@ -136,6 +149,7 @@
           <a href="#paths">📁 Every path</a>
           <a href="#gitops">🔄 ArgoCD / GitOps</a>
           <a href="#grow">📈 What to grow</a>
+          <a href="#retro">🔎 Case study: an outage</a>
           <a href="#glossary">📖 Every term explained</a>
           <a href="#s1h">⏱ 1 hour</a>
         </div>
@@ -729,6 +743,256 @@ kubectl apply -f apps/argocd/application.yaml</code></pre>
         </div>
       </section>
 
+      <section id="retro">
+        <h2><span class="badge retro">CASE STUDY</span>The day habit.bit-habit.com served the wrong website</h2>
+        <p class="tldr">
+          A real outage on this cluster, written up with <strong>START</strong> — Situation, Task,
+          Action, Result, Takeaway. <mark>The site answered <code>200 OK</code> the entire time, which
+          is exactly why nobody noticed for months.</mark> If you are new to infrastructure, this is
+          the most useful section on the page: everything above describes how things work, and this
+          describes what it looks like when they don't.
+        </p>
+
+        <div class="callout">
+          <strong>New to this?</strong> You only need four words, all of them explained in
+          <a href="#s5m">5 minutes</a>: a <strong>Pod</strong> is a running app, a
+          <strong>Service</strong> is its stable inside address, an <strong>Ingress</strong> is one
+          line in the routing table saying "this web address → that Service", and
+          <strong>Traefik</strong> is the front door that reads that table. The whole incident is one
+          Ingress line pointing at the wrong Service.
+        </div>
+
+        <div class="star">
+          <h3><span class="letter">S</span> <span>Situation</span></h3>
+          <p class="sub">what was happening</p>
+          <p>
+            Opening <code>habit.bit-habit.com</code> showed a personal portfolio page instead of the
+            BitHabit habit-tracking app. Not an error page — <strong>the wrong site, served
+            perfectly</strong>, with a valid certificate and a <code>200 OK</code> status.
+          </p>
+          <p>
+            That detail matters more than it sounds. <code>200 OK</code> is the code a server sends
+            when everything went fine. Uptime monitors, this page's own live status grid, and the
+            status page at <code>status.bit-habit.com</code> all ask "did it answer 200?" — and the
+            answer was yes, continuously, while the site was completely wrong.
+            <mark>The outage was invisible to every automated check.</mark>
+          </p>
+        </div>
+
+        <div class="star">
+          <h3><span class="letter">T</span> <span>Task</span></h3>
+          <p class="sub">what had to be done</p>
+          <p>
+            Find out why, and restore the Flutter app — <strong>without breaking the other ~19 sites
+            that share this one server.</strong> That constraint shaped everything: the routing table
+            for every <code>bit-habit.com</code> site lived in a single file, so any careless edit
+            could take all of them down at once.
+          </p>
+        </div>
+
+        <div class="star">
+          <h3><span class="letter">A</span> <span>Action</span></h3>
+          <p class="sub">how it was actually tracked down</p>
+          <p>
+            The method here is worth more than the answer: <strong>work inward one layer at a time,
+            and after each step ask "is the problem above this layer or below it?"</strong>
+          </p>
+          <table class="timeline">
+            <thead><tr><th>Step</th><th>What was checked</th><th>What it ruled out</th></tr></thead>
+            <tbody>
+              <tr>
+                <td>1</td>
+                <td>Fetch the page from outside. Status was <code>200</code>, but the page
+                  <code>&lt;title&gt;</code> was the portfolio's, and <code>main.dart.js</code> —
+                  the file that <em>is</em> the Flutter app — returned <code>404</code>.</td>
+                <td>Not a crash, not TLS, not DNS. Something is answering; it just isn't the app.</td>
+              </tr>
+              <tr>
+                <td>2</td>
+                <td>Fetch the neighbouring hostnames. <code>bit-habit.com</code>,
+                  <code>www.bit-habit.com</code> and <code>habit.bit-habit.com</code> all returned
+                  <em>the same</em> portfolio HTML.</td>
+                <td>Not specific to the habit app. Three names are landing in one place — this is a
+                  routing problem.</td>
+              </tr>
+              <tr>
+                <td>3</td>
+                <td>Read the cluster's routing table (<code>kubectl get ingress</code>). The rule
+                  said <code>habit.bit-habit.com → static-web-svc</code>.</td>
+                <td>Found the wrong turn. <code>static-web-svc</code> is the portfolio, not the app.</td>
+              </tr>
+              <tr>
+                <td>4</td>
+                <td>Call the Flutter app's Service directly <em>from inside the cluster</em>, bypassing
+                  the front door entirely. It returned <code>&lt;title&gt;BitHabit</code> and
+                  <code>main.dart.js → 200</code>.</td>
+                <td>The app was never broken. It had been running fine for 103 days with nothing
+                  routed to it.</td>
+              </tr>
+              <tr>
+                <td>5</td>
+                <td>Read the portfolio Pod's own nginx config. Its <code>server_name</code> listed
+                  only <code>bit-habit.com</code> and <code>www.bit-habit.com</code> — not
+                  <code>habit.bit-habit.com</code>.</td>
+                <td>Explained the <code>200</code>. See below: this is the second failure.</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <p><strong>Two independent failures had stacked</strong>, and it took both to produce this
+            symptom:</p>
+          <div class="mermaid">
+flowchart TB
+    B["Browser asks for\nhabit.bit-habit.com"] --> T["Traefik reads the routing table"]
+    T --> F1["MISTAKE 1\nrule points at static-web-svc\n(the portfolio), not the Flutter app"]
+    F1 --> N["The portfolio Pod's nginx\nreceives the request"]
+    N --> F2["MISTAKE 2\nno server_name matches this host,\nso nginx falls back to its default block"]
+    F2 --> R["200 OK + the wrong site\n(no error anywhere)"]
+    APP["The Flutter app\nRunning, healthy, unreachable"]
+          </div>
+
+          <div class="concept">
+            <span class="tag">the concept that makes this click — nginx default_server</span>
+            <p>
+              One nginx can host many websites. It decides which one you get by reading the
+              <code>Host:</code> header your browser sends and matching it against each site's
+              <code>server_name</code>. <strong>If nothing matches, nginx does not return an
+              error.</strong> It quietly hands the request to the first site it has — the
+              <em>default server</em>.
+            </p>
+            <p>
+              That behaviour is intentional: a server on the public internet is reached by random
+              hostnames and IP scans all day, and it needs <em>some</em> answer. But it means a
+              hostname you forgot to configure does not fail loudly — <mark>it silently gets served
+              somebody else's website, with a 200.</mark> Whenever you see "the wrong site, but a
+              successful response," check <code>server_name</code> first.
+            </p>
+          </div>
+        </div>
+
+        <div class="star">
+          <h3><span class="letter">R</span> <span>Result</span></h3>
+          <p class="sub">what was changed</p>
+          <p>
+            Traffic was restored in one line — but <strong>the fix that mattered was the one made
+            afterwards.</strong> The bad rule was not just live in the cluster; it was written that
+            way in <code class="path">base/ingress.yaml</code> in this repo. Fixing only the running
+            cluster would have been undone the next time anyone applied that file.
+          </p>
+          <ul>
+            <li><strong>Routed the host to the right Service</strong> — the Flutter app instead of
+              the portfolio.</li>
+            <li><strong>Brought the app into git.</strong> <code>bithabit-web</code> — its Deployment,
+              Service and nginx ConfigMap — existed <em>only</em> inside the running cluster and in
+              no repository at all. It is now declared in
+              <code class="path">apps/bithabit-web/</code>.</li>
+            <li><strong>Split its routing out of the shared file.</strong> The host's two rules now
+              live beside the apps they serve — <code class="path">apps/bithabit-web/ingress.yaml</code>
+              for the site, <code class="path">apps/bithabit-api/ingress.yaml</code> for
+              <code>/api/</code> — and the shared table dropped from 15 hostnames to 14.</li>
+            <li><strong>Verified from outside</strong>, including the other sites, to confirm nothing
+              else moved.</li>
+          </ul>
+          <div class="callout good">
+            <strong>Root cause, stated honestly:</strong> this was not really a routing bug. It was a
+            <em>single source of truth</em> bug. The app existed in the cluster but in no repo, so the
+            one line pointing at it lived in a file that had never heard of it.
+            <mark>A rule with no owner drifts, and nobody notices.</mark>
+          </div>
+        </div>
+
+        <div class="star">
+          <h3><span class="letter">T</span> <span>Takeaway</span></h3>
+          <p class="sub">what to carry forward</p>
+
+          <div class="lesson">
+            <h4>1. <code>200 OK</code> is not proof that anything is right</h4>
+            <p>A status code says the server answered. It says nothing about <em>what</em> it
+              answered. Health checks that only look at the status code will miss an entire class of
+              outage — this one hid for months.</p>
+            <p class="why"><strong>Do instead:</strong> assert on content. Gatus, already running
+              here, can require the response body to contain an expected string. One extra line per
+              service turns "it responded" into "it responded with itself."</p>
+          </div>
+
+          <div class="lesson">
+            <h4>2. Fix the file, not just the cluster</h4>
+            <p>Changing a live cluster directly makes the symptom go away and leaves the cause in
+              place. The next <code>apply</code> of the original file silently reintroduces the bug.
+              The gap between "what is running" and "what is written down" is called
+              <strong>drift</strong>.</p>
+            <p class="why"><strong>Do instead:</strong> treat the repo as the truth and the cluster
+              as its output. A direct patch is fine to stop the bleeding — but it is not done until
+              the file says the same thing.</p>
+          </div>
+
+          <div class="lesson">
+            <h4>3. A resource that lives in no repo will eventually be orphaned</h4>
+            <p>The Flutter app ran happily for 103 days with zero traffic routed to it. Nothing was
+              alerting, because from Kubernetes' point of view nothing was wrong: a Pod that nobody
+              visits is not an error.</p>
+            <p class="why"><strong>Do instead:</strong> when you create something in a cluster by
+              hand, write it into the repo in the same sitting. "I'll commit it later" is how an app
+              becomes invisible.</p>
+          </div>
+
+          <div class="lesson">
+            <h4>4. One shared file for 15 sites means no one owns any line in it</h4>
+            <p>The bad rule sat in a file about every other site. Nobody reviewing the habit app
+              would open it, and anybody editing it risked the other 14. That is a large
+              <strong>blast radius</strong> — the amount that can break from one mistake.</p>
+            <p class="why"><strong>Do instead:</strong> keep each app's routing next to the app. Two
+              Ingresses can share one hostname (that is how <code>/</code> and <code>/api/</code>
+              split here), so splitting costs nothing and shrinks the blast radius to one site.</p>
+          </div>
+
+          <div class="lesson">
+            <h4>5. Diagnose in layers, and prove each one</h4>
+            <p>The decisive move was calling the app's Service <em>from inside the cluster</em>. That
+              single test split the problem cleanly in half: the app is fine, so the fault is in
+              front of it. Without it, the obvious guess — "the Flutter build is broken" — would have
+              cost hours.</p>
+            <p class="why"><strong>Do instead:</strong> at each layer, find the cheapest test that
+              tells you which side the fault is on. Bisect the path, don't guess at it.</p>
+          </div>
+        </div>
+
+        <div class="concept">
+          <span class="tag">try it yourself — the commands used, in order</span>
+          <pre><code># 1. from outside: is it answering, and with what?
+curl -sS https://habit.bit-habit.com | grep -o '&lt;title&gt;[^&lt;]*'
+curl -sS -o /dev/null -w '%{http_code}\n' https://habit.bit-habit.com/main.dart.js
+
+# 2. what does the routing table say for this host?
+sudo k3s kubectl get ingress -A
+sudo k3s kubectl get ingress main-ingress -o yaml
+
+# 3. bypass the front door — ask the Service directly, from inside
+sudo k3s kubectl run t --rm -i --restart=Never --image=curlimages/curl -- \
+  curl -sS http://bithabit-web-svc/ | grep -o '&lt;title&gt;[^&lt;]*'
+
+# 4. read the nginx config of whichever Pod answered
+sudo k3s kubectl exec deploy/static-web -- cat /etc/nginx/conf.d/default.conf</code></pre>
+        </div>
+
+        <div class="callout warn">
+          <strong>Still open, and deliberately not fixed in the same change:</strong>
+          <ul>
+            <li>The Flutter build is mounted from a host directory rather than baked into a container
+              image, so a running Pod cannot tell you which commit it was built from, and there is no
+              rollback. Same pattern as <code>static-web</code> — see
+              <a href="#grow">what to grow</a>.</li>
+            <li>A second, stale copy of the shared routing table still exists in another repo
+              (<code class="path">daily_seongsu/infra/legacy-migration/04-ingress.yaml</code>). It
+              describes 13 hostnames instead of the current 14 and predates several services.
+              <mark>Two files claiming to define the same resource is the same class of bug this
+              incident was.</mark> It should be deleted or clearly marked dead.</li>
+          </ul>
+          <p>Naming what you chose not to fix is part of a retrospective. An unwritten known issue is
+            indistinguishable from an unknown one.</p>
+        </div>
+      </section>
+
       <section id="glossary">
         <h2><span class="badge">WORDS</span>Every term on this page, in plain language</h2>
         <p class="tldr">
@@ -810,6 +1074,25 @@ kubectl apply -f apps/argocd/application.yaml</code></pre>
               <tr><td><strong>selfHeal</strong></td><td>Automatically re-apply git over any hand-made change. The property everyone actually wants.</td></tr>
               <tr><td><strong>prune</strong></td><td>Delete from the cluster whatever was deleted from git. Genuinely dangerous — deleting a file becomes deleting production. Off here.</td></tr>
               <tr><td><strong>Sealed Secrets / SOPS</strong></td><td>Ways to encrypt a secret so the encrypted file is safe to commit. Needed because GitOps cannot sync what is deliberately kept out of git.</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="concept">
+          <span class="tag">when things break — the vocabulary from the case study</span>
+          <table>
+            <thead><tr><th>Term</th><th>In plain words</th></tr></thead>
+            <tbody>
+              <tr><td><strong><code>server_name</code></strong></td><td>The line in an nginx config that says which web addresses this site answers to. nginx compares it against the <code>Host:</code> header the browser sent.</td></tr>
+              <tr><td><strong><code>default_server</code></strong></td><td><mark>The trap in the case study.</mark> If no <code>server_name</code> matches, nginx does not error — it serves its first/default site instead. So a forgotten hostname quietly returns <em>someone else's website</em> with a successful <code>200</code>.</td></tr>
+              <tr><td><strong>status code</strong></td><td>The three-digit result of a request. <code>200</code> = the server answered normally, <code>404</code> = no such page, <code>500</code> = the server broke. Note that <code>200</code> only means "answered" — <em>not</em> "answered correctly".</td></tr>
+              <tr><td><strong>single source of truth (SSOT)</strong></td><td>The rule that exactly one place defines each thing. When two files define the same resource — or when something exists only in the cluster and in no file — you can no longer tell which one is right, and the last person to run a command wins.</td></tr>
+              <tr><td><strong>drift</strong></td><td>The running system and the files describing it have quietly grown apart. Usually created by fixing something directly in production and not updating the file.</td></tr>
+              <tr><td><strong>blast radius</strong></td><td>How much breaks when one change goes wrong. A routing file covering 15 sites has a blast radius of 15; one file per app has a blast radius of 1.</td></tr>
+              <tr><td><strong>root cause</strong></td><td>The condition that let the bug exist, not the line that displayed it. Here the visible bug was one wrong Ingress line; the root cause was that the app was in no repo, so that line had no owner.</td></tr>
+              <tr><td><strong>health check</strong></td><td>An automated request that asks "is this site up?" on a timer. Whether it checks <em>only the status code</em> or also the <em>content</em> decides which outages it can see.</td></tr>
+              <tr><td><strong>retrospective</strong></td><td>A write-up after an incident, aimed at the system rather than the person. <strong>START</strong> is one format: Situation, Task, Action, Result, Takeaway.</td></tr>
+              <tr><td><strong>bisecting</strong></td><td>Debugging by repeatedly cutting the problem in half. Testing the Service from <em>inside</em> the cluster proved the app was healthy, which eliminated everything behind the front door in one step.</td></tr>
             </tbody>
           </table>
         </div>
