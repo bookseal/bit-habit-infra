@@ -1,0 +1,920 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>ArgoCD 설치 · bit-habit 인프라 튜토리얼</title>
+<style>
+  :root {
+    --ink:#1b1f24; --muted:#5b6570; --line:#e3e7ec; --bg:#fafbfc; --accent:#2d6cdf;
+    --card:#fff; --ok:#28a745; --warn:#e0413a; --purple:#6f42c1; --orange:#e36209;
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink);
+    font:16px/1.7 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans KR",sans-serif; }
+  a { color:var(--accent); text-decoration:none; }
+  a:hover { text-decoration:underline; }
+  code { background:#eef1f5; padding:1px 5px; border-radius:4px; font-size:.88em;
+    font-family:ui-monospace,SFMono-Regular,Menlo,monospace; }
+  b { font-weight:700; }
+  mark { background:linear-gradient(transparent 58%, #ffe58a 58%); padding:0 2px; border-radius:2px; color:inherit; }
+
+  /* 진행 바 */
+  #bar { position:fixed; top:0; left:0; height:4px; background:var(--accent); width:0; z-index:60; transition:width .3s; }
+  #barlabel { position:fixed; top:8px; right:12px; z-index:60; background:var(--card); border:1px solid var(--line);
+    border-radius:999px; padding:4px 12px; font-size:.78rem; font-weight:700; color:var(--muted); }
+
+  /* 상단 바 */
+  header.top { position:sticky; top:0; z-index:50; background:rgba(250,251,252,.93);
+    backdrop-filter:blur(8px); border-bottom:1px solid var(--line); }
+  .bar { max-width:900px; margin:0 auto; padding:11px 20px; display:flex; flex-wrap:wrap;
+    align-items:baseline; gap:14px; }
+  .brand { font-weight:800; letter-spacing:-.01em; }
+  .brand .dot { color:var(--accent); }
+  .bar nav { display:flex; flex-wrap:wrap; gap:13px; font-size:.87rem; }
+  .bar nav a { color:var(--muted); }
+  .bar nav a:hover { color:var(--accent); }
+
+  .wrap { max-width:900px; margin:0 auto; padding:0 20px 120px; }
+
+  /* 히어로 */
+  .hero { padding:40px 0 6px; }
+  .issue-badge { display:inline-block; font-size:.72rem; font-weight:800; letter-spacing:.05em;
+    color:#fff; background:var(--orange); padding:3px 10px; border-radius:999px; }
+  .eyebrow { font-size:.78rem; font-weight:700; color:var(--muted); letter-spacing:.04em; }
+  h1 { font-size:1.95rem; margin:14px 0 12px; letter-spacing:-.015em; line-height:1.35; }
+  .lede { font-size:1.04rem; color:var(--muted); }
+  h2 { font-size:1.32rem; margin:52px 0 10px; padding-top:10px; border-top:1px solid var(--line);
+    scroll-margin-top:70px; }
+  h3 { font-size:1.05rem; margin:30px 0 8px; scroll-margin-top:70px; }
+
+  /* 메타 카드 */
+  .meta-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:12px; margin:22px 0; }
+  .meta-card { border:1px solid var(--line); border-radius:12px; background:var(--card); padding:14px 16px; }
+  .meta-card h4 { margin:0 0 6px; font-size:.74rem; letter-spacing:.06em; text-transform:uppercase; color:var(--muted); }
+  .meta-card p { margin:0; font-size:.93rem; }
+
+  /* 콜아웃 */
+  .callout { border-radius:11px; padding:13px 16px; margin:16px 0; font-size:.95rem;
+    background:#eef4ff; border:1px solid #cfe0ff; }
+  .callout .tag { display:inline-block; font-size:.72rem; font-weight:800; letter-spacing:.05em;
+    color:var(--accent); background:#fff; border:1px solid #cfe0ff; padding:2px 9px; border-radius:999px; margin-bottom:7px; }
+  .callout p { margin:0; }
+  .callout.warn { background:#fff7e6; border-color:#ffe1a8; }
+  .callout.warn .tag { color:#a35b00; border-color:#ffe1a8; }
+  .callout.danger { background:#fdeceb; border-color:#f6c9c5; }
+  .callout.danger .tag { color:var(--warn); border-color:#f6c9c5; }
+  .callout.good { background:#eafaf0; border-color:#b8e6c8; }
+  .callout.good .tag { color:#1c7a36; border-color:#b8e6c8; }
+  .callout.learn { background:#f6f2fd; border-color:#ddd0f5; }
+  .callout.learn .tag { color:var(--purple); border-color:#ddd0f5; }
+  .callout.note { background:var(--card); border-color:var(--line); }
+  .callout.note .tag { color:var(--muted); border-color:var(--line); }
+  .callout.why { background:#eef4ff; border-color:#cfe0ff; }
+
+  /* 코드 블록 */
+  .code { position:relative; margin:14px 0; border-radius:11px; overflow:hidden; border:1px solid #1d2733; }
+  .code .filename { background:#182230; color:#9fb0c3; font-size:.75rem; font-weight:700;
+    padding:7px 13px; display:flex; justify-content:space-between; align-items:center;
+    font-family:ui-monospace,SFMono-Regular,Menlo,monospace; }
+  .code .lang { color:#6c7d92; font-weight:600; }
+  .code pre { background:#0f1720; color:#e6edf3; margin:0; padding:14px 62px 14px 16px;
+    overflow:auto; font-size:.83rem; line-height:1.6; }
+  .code pre code { background:none; padding:0; color:inherit; font-size:inherit; white-space:pre; }
+  .code.term .filename { background:#101821; }
+  .copy { position:absolute; top:36px; right:9px; background:#243244; color:#cbd5e1;
+    border:1px solid #38465a; border-radius:7px; font-size:.72rem; font-weight:700;
+    padding:5px 10px; cursor:pointer; }
+  .copy:hover { background:#2f4056; color:#fff; }
+  .copy.done { background:var(--ok); border-color:var(--ok); color:#fff; }
+
+  .expect { font-size:.92rem; color:var(--muted); margin:6px 0 0; }
+  .expect b { color:var(--ink); }
+
+  /* 다이어그램 */
+  .diagram { background:var(--card); border:1px solid var(--line); border-radius:12px;
+    padding:16px; margin:18px 0; text-align:center; }
+  .diagram .mermaid { margin:0; }
+  .diagram .cap { display:block; font-size:.87rem; color:var(--muted); margin-top:10px; text-align:left; }
+
+  /* 표 */
+  table.plain { width:100%; border-collapse:collapse; font-size:.92rem; margin:12px 0; }
+  table.plain th, table.plain td { text-align:left; padding:8px 10px; border-bottom:1px solid var(--line); vertical-align:top; }
+  table.plain th { color:var(--muted); font-weight:600; }
+
+  details { margin:14px 0 2px; border-top:1px dashed var(--line); padding-top:11px; }
+  summary { cursor:pointer; font-size:.9rem; font-weight:600; color:var(--muted); }
+  summary:hover { color:var(--accent); }
+  details[open] summary { color:var(--ink); }
+  details td:first-child { white-space:nowrap; color:var(--warn); font-weight:600; }
+
+  /* 퀴즈 */
+  .quiz { border:1px solid var(--line); border-left:3px solid var(--purple); border-radius:12px;
+    background:var(--card); padding:15px 17px; margin:18px 0; }
+  .q-tag { font-size:.73rem; font-weight:800; letter-spacing:.04em; color:var(--purple); margin-bottom:6px; }
+  .q { font-weight:700; margin-bottom:11px; }
+  .quiz-opts { display:flex; flex-direction:column; gap:7px; }
+  .quiz-opt { display:flex; gap:10px; align-items:flex-start; text-align:left; width:100%;
+    background:var(--bg); border:1px solid var(--line); border-radius:9px; padding:10px 12px;
+    font:inherit; font-size:.93rem; color:inherit; cursor:pointer; line-height:1.55; }
+  .quiz-opt:hover { border-color:var(--accent); }
+  .quiz-opt .mark { flex:0 0 auto; width:21px; height:21px; line-height:20px; text-align:center;
+    border:1px solid var(--line); border-radius:6px; font-size:.76rem; font-weight:800; color:var(--muted); background:#fff; }
+  .quiz-opt.right { border-color:var(--ok); background:#eafaf0; }
+  .quiz-opt.right .mark { background:var(--ok); border-color:var(--ok); color:#fff; }
+  .quiz-opt.wrong { border-color:var(--warn); background:#fdeceb; }
+  .quiz-opt.wrong .mark { background:var(--warn); border-color:var(--warn); color:#fff; }
+  .quiz.answered .quiz-opt { cursor:default; }
+  .quiz-explain { display:none; margin-top:11px; padding-top:11px; border-top:1px dashed var(--line);
+    font-size:.92rem; color:var(--muted); }
+  .quiz.answered .quiz-explain { display:block; }
+
+  /* 체크리스트 */
+  ul.tasklist { list-style:none; margin:12px 0; padding:0;
+    border:1px solid var(--line); border-radius:12px; background:var(--card); overflow:hidden; }
+  ul.tasklist li { display:flex; gap:11px; align-items:flex-start; padding:9px 15px;
+    border-bottom:1px solid var(--line); margin:0; font-size:.94rem; }
+  ul.tasklist li:last-child { border-bottom:none; }
+  ul.tasklist input { width:17px; height:17px; margin-top:3px; flex:0 0 auto;
+    accent-color:var(--ok); cursor:pointer; }
+  ul.tasklist li.on { background:#f6fdf8; }
+  ul.tasklist li.on .label { color:var(--muted); }
+  ul.tasklist .label { cursor:pointer; }
+
+  ul { padding-left:20px; } li { margin:4px 0; }
+
+  .toolbar { margin:22px 0; }
+  .toolbar button { background:#fff; border:1px solid var(--line); border-radius:9px;
+    padding:8px 14px; font-size:.85rem; cursor:pointer; color:var(--muted); font-family:inherit; }
+  .toolbar button:hover { border-color:var(--accent); color:var(--accent); }
+
+  .pager { display:flex; gap:12px; margin-top:46px; }
+  .pager a { flex:1; border:1px solid var(--line); border-radius:12px; background:var(--card);
+    padding:13px 16px; display:block; }
+  .pager a:hover { border-color:var(--accent); text-decoration:none; }
+  .pager span { display:block; font-size:.74rem; color:var(--muted); }
+  .pager .next { text-align:right; }
+
+  footer { margin-top:44px; padding-top:18px; border-top:1px solid var(--line);
+    color:var(--muted); font-size:.9rem; }
+
+  @media (max-width:620px) { #barlabel { display:none; } h1 { font-size:1.6rem; } }
+</style>
+</head>
+<body>
+<div id="bar"></div>
+<div id="barlabel">0%</div>
+
+<header class="top">
+  <div class="bar">
+    <span class="brand">bit<span class="dot">·</span>habit 인프라 튜토리얼</span>
+    <nav>
+      <a href="index.html">← 개요</a>
+      <a href="#why">왜 GitOps?</a>
+      <a href="#words">용어</a>
+      <a href="#install">설치</a>
+      <a href="#expose">UI 열기</a>
+      <a href="#first">첫 App</a>
+      <a href="#all">전체 확대</a>
+    </nav>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <section class="hero">
+    <span class="issue-badge">GITOPS</span>
+    <span class="eyebrow" style="margin-left:8px">bit-habit · 실습</span>
+    <h1>ArgoCD 설치하기 — 이 클러스터에, 한 걸음씩</h1>
+    <p class="lede">지금 이 인프라는 전부 <b>밀어넣기(push)</b>입니다. 사람이 <code>kubectl apply</code>를 칩니다.
+    GitOps는 그걸 뒤집습니다 — 클러스터 <b>안에</b> 사는 컨트롤러가 git을 영원히 <b>당겨(pull)</b> 읽으며
+    클러스터를 저장소와 같게 유지합니다. ArgoCD가 그 컨트롤러이고, 이 페이지는 그걸 <b>이 클러스터에</b> 올리는 과정입니다.</p>
+  </section>
+
+  <div class="meta-grid">
+    <div class="meta-card"><h4>배우는 것</h4>
+      <p>push vs pull · <code>Application</code> CRD · Sync vs Health · 드리프트 감지 ·
+      <code>selfHeal</code> / <code>prune</code> · Traefik 뒤에서 <code>--insecure</code>로 도는 이유 · 네임스페이스별 TLS secret</p></div>
+    <div class="meta-card"><h4>완료 기준</h4>
+      <p><code>https://argocd.bit-habit.com</code>에 로그인되고, 보드에 앱 타일이 뜨고,
+      손으로 만든 드리프트를 ArgoCD가 잡아내는 걸 <b>내 눈으로</b> 본다.</p></div>
+  </div>
+
+  <div class="callout warn"><span class="tag">이 페이지는 “빨리 설치”가 목표가 아닙니다</span>
+    <p>명령어만 쭉 복사하면 15분이면 끝납니다. 그런데 그렇게 설치한 ArgoCD는 언젠가 <b>사이트를 통째로 내립니다</b> —
+    <code>prune</code>이 뭔지 모른 채 켰기 때문에. 그래서 매 단계마다 <b>“이 줄이 왜 여기 있나”</b>를 묻습니다.
+    특히 <b>수동 동기화로 시작</b>하고 <code>base/ingress.yaml</code>은 <b>맨 마지막</b>에 건드립니다.</p></div>
+
+  <div class="callout note"><span class="tag">진행 바 · 체크리스트</span>
+    <p>맨 위 <b>진행 바</b>가 이 페이지 전체 체크를 추적합니다(이 브라우저에 저장됩니다).
+    각 단계 끝의 체크박스를 눌러 진도를 남기세요. 퀴즈는 맞히는 게 목적이 아니라
+    <b>“왜 그런가”</b>를 한 번 멈춰서 생각하게 하려는 장치입니다.</p></div>
+
+  <div class="callout danger"><span class="tag">⚙️ 이 클러스터의 특수사정 — 아래 모든 명령에 반영돼 있습니다</span>
+    <p></p>
+    <ul style="margin:8px 0 0">
+      <li>이 노드에서 맨 <code>kubectl</code>은 TLS 에러가 납니다. 그래서 모든 명령이
+        <code>sudo k3s kubectl</code> 형태입니다 — k3s 노드에서 항상 통하는 형태.</li>
+      <li>TLS는 <b>Traefik</b>이 끝냅니다. 그래서 ArgoCD는 <code>--insecure</code>(내부 평문 HTTP)로 돕니다.</li>
+      <li>secret 복제기가 없습니다. 와일드카드 TLS secret을 <code>argocd</code> 네임스페이스로 <b>손으로 복사</b>합니다(4단계).</li>
+      <li><code>docs/</code>는 nginx가 hostPath로 <b>이 디스크에서 바로</b> 서빙합니다 — 이 페이지도 그렇게 떠 있습니다.</li>
+    </ul></div>
+
+
+  <!-- ============================================================
+       0. 왜 GitOps인가
+       ============================================================ -->
+  <h2 id="why">0. 왜 GitOps인가? (설치하기 전에)</h2>
+  <p>지금 이 클러스터에 뭔가를 바꾸는 방법은 하나입니다. 서버에 들어가 <code>kubectl apply -f ...</code>를 치는 것.
+  이걸 <b>push 모델</b>이라고 합니다 — 변경이 <b>바깥에서 안으로</b> 밀려 들어갑니다.</p>
+
+  <p>문제는 <b>클러스터가 git을 절대 보지 않는다</b>는 겁니다. 저장소의 YAML은 “우리가 원한다고 <em>믿는</em> 상태”일 뿐,
+  실제로 도는 것과 같다는 보장이 없습니다. 누가 급해서 <code>kubectl edit</code>으로 replica를 2로 올려두면,
+  git에는 1이라 적혀 있는데 현실은 2입니다. 이 어긋남이 <b>드리프트(drift)</b>입니다.
+  <mark>드리프트는 조용합니다</mark> — 아무도 모르고, 다음 배포 때 갑자기 되돌아갑니다.</p>
+
+  <div class="diagram">
+    <pre class="mermaid">
+flowchart LR
+  subgraph NOW["지금 — push"]
+    Y["사람 / CI"] ==>|"kubectl apply"| K1["클러스터<br/>(git을 안 봄)"]
+  end
+  subgraph GO["ArgoCD — pull"]
+    A["ArgoCD<br/>(클러스터 안에 산다)"] -->|"저장소를 계속 읽음"| G["git"]
+    A ==>|"클러스터를 git과 같게 만듦"| K2["클러스터"]
+  end
+    </pre>
+    <span class="cap">바뀌는 건 딱 하나: <b>방향</b>. 밖에서 밀어넣던 걸, 안에서 당겨 읽습니다.
+    그 순간 git이 “믿음”이 아니라 <b>사실</b>이 됩니다.</span>
+  </div>
+
+  <div class="quiz">
+    <div class="q-tag">🧠 push의 문제</div>
+    <div class="q">누가 <code>kubectl edit</code>으로 replica를 1 → 2로 손수 바꿔놨습니다. git에는 1이라 적혀 있습니다. 지금(push 모델) 어떻게 되나요?</div>
+    <div class="quiz-opts">
+      <button class="quiz-opt" data-correct="true"><span class="mark">A</span><span>아무 일도 안 일어납니다. 클러스터는 git을 안 보니까요 — <b>아무도 모른 채</b> 저장소와 현실이 어긋난 상태로 계속 굴러갑니다.</span></button>
+      <button class="quiz-opt"><span class="mark">B</span><span>쿠버네티스가 git을 확인해서 1로 되돌립니다.</span></button>
+      <button class="quiz-opt"><span class="mark">C</span><span>다음 <code>git push</code> 때 자동으로 경고가 뜹니다.</span></button>
+    </div>
+    <div class="quiz-explain"><b>핵심:</b> 쿠버네티스는 git의 존재를 모릅니다. YAML 파일은 그냥 <code>apply</code>를 칠 때 읽히는 <b>입력값</b>일 뿐이에요.
+    “저장소 = 현실”은 <b>사람이 규율로</b> 지켜온 약속이었고, 규율은 언젠가 깨집니다. ArgoCD는 그 약속을 <b>프로그램</b>으로 바꿉니다.</div>
+  </div>
+
+  <div class="quiz">
+    <div class="q-tag">🧠 pull 모델</div>
+    <div class="q">ArgoCD를 깔면 “배포”라는 행위는 무엇이 되나요?</div>
+    <div class="quiz-opts">
+      <button class="quiz-opt"><span class="mark">A</span><span>ArgoCD UI에서 이미지 태그를 입력하는 것.</span></button>
+      <button class="quiz-opt" data-correct="true"><span class="mark">B</span><span><b>git에 커밋하는 것.</b> 그 다음은 ArgoCD가 알아서 봅니다 — 배포 절차가 “저장소를 고친다”로 줄어듭니다.</span></button>
+      <button class="quiz-opt"><span class="mark">C</span><span>서버에 SSH로 들어가 <code>kubectl apply</code>를 치는 것(그대로).</span></button>
+    </div>
+    <div class="quiz-explain"><b>핵심:</b> 이게 GitOps의 실질적 보상입니다. 배포 권한 = git 쓰기 권한이 되고,
+    “누가 언제 뭘 바꿨나”는 <b>커밋 로그가 곧 감사 로그</b>가 됩니다. 롤백도 <code>git revert</code> 하나로 끝납니다.</div>
+  </div>
+
+  <ul class="tasklist">
+    <li><input type="checkbox"><span class="label">push 모델에서 <b>드리프트가 조용히 생긴다</b>는 걸 설명할 수 있다</span></li>
+    <li><input type="checkbox"><span class="label">GitOps가 바꾸는 건 <b>방향(push→pull)</b> 하나임을 안다</span></li>
+    <li><input type="checkbox"><span class="label">GitOps에서 “배포 = 커밋”이 되는 이유를 안다</span></li>
+  </ul>
+
+
+  <!-- ============================================================
+       0.5 용어
+       ============================================================ -->
+  <h2 id="words">0.5 kubectl 하던 사람을 위한 ArgoCD 용어 (걸리는 것만)</h2>
+  <p>당신은 이미 Pod·Deployment·Service·Ingress·네임스페이스를 압니다. 그래서 ArgoCD에서
+  <b>“어? 이건 뭐지”</b> 싶은 것만 골라, <b>이미 아는 것과 나란히</b> 놓습니다. 이 다섯 개를 넘으면 나머지는 그냥 설치입니다.</p>
+
+  <div class="callout learn"><span class="tag">① <code>Application</code> = 새로 배우는 오브젝트 타입</span>
+    <p>ArgoCD를 설치하면 CRD(Custom Resource Definition)가 딸려옵니다 — 쿠버네티스에게
+    <code>Application</code>이라는 <b>새 오브젝트 종류</b>를 가르치는 것. 그때부터
+    <code>kubectl get application</code>이 Pod처럼 동작합니다. Application 하나는 문장 하나예요:
+    <mark>“이 저장소의 이 경로를, 이 클러스터의 이 네임스페이스와 같게 유지해라.”</mark></p></div>
+
+  <div class="quiz">
+    <div class="q-tag">🧠 Application</div>
+    <div class="q">ArgoCD의 <code>Application</code> 오브젝트가 담는 내용은?</div>
+    <div class="quiz-opts">
+      <button class="quiz-opt" data-correct="true"><span class="mark">A</span><span><b>어느 저장소의 · 어느 경로를 · 어디에</b> 맞출지 — 즉 “git 위치 ↔ 클러스터 위치”의 짝.</span></button>
+      <button class="quiz-opt"><span class="mark">B</span><span>애플리케이션 소스 코드 자체.</span></button>
+      <button class="quiz-opt"><span class="mark">C</span><span>Docker 이미지 빌드 방법.</span></button>
+    </div>
+    <div class="quiz-explain"><b>핵심:</b> Application은 앱이 아니라 <b>매핑</b>입니다. <code>source</code>(repoURL·path·targetRevision)와
+    <code>destination</code>(server·namespace) 두 쪽을 잇는 것 — 그게 전부예요. 앱 자체는 여전히 그냥 Deployment입니다.</div>
+  </div>
+
+  <div class="callout learn"><span class="tag">② Sync ≠ Health — 서로 <b>독립</b>인 두 사실</span>
+    <p><b>Sync</b>: 클러스터가 git과 같은가? (Synced / OutOfSync) &nbsp;·&nbsp;
+    <b>Health</b>: 그래서 그게 실제로 잘 도는가? (Healthy / Degraded / Progressing)<br>
+    <mark>Synced인데 Degraded</mark>가 완벽히 가능합니다 — git에 적힌 대로 정확히 배포했는데 그 이미지가 크래시 루프인 경우.
+    이 구분을 머리에 넣어두세요. ArgoCD 보드를 읽는 문법입니다.</p></div>
+
+  <div class="quiz">
+    <div class="q-tag">🧠 Synced + Degraded</div>
+    <div class="q">타일이 <b>Synced</b>인데 <b>Degraded</b>입니다. 무슨 뜻인가요?</div>
+    <div class="quiz-opts">
+      <button class="quiz-opt" data-correct="true"><span class="mark">A</span><span>git이 시킨 대로 <b>정확히</b> 배포됐지만, 그렇게 배포된 것이 <b>제대로 안 돌고</b> 있습니다 — 즉 <b>git 쪽이 틀렸습니다</b>(잘못된 이미지 태그 등).</span></button>
+      <button class="quiz-opt"><span class="mark">B</span><span>ArgoCD가 아직 동기화를 못 끝냈습니다.</span></button>
+      <button class="quiz-opt"><span class="mark">C</span><span>불가능한 조합입니다.</span></button>
+    </div>
+    <div class="quiz-explain"><b>핵심:</b> 이 조합이 디버깅할 때 제일 유용합니다. Synced가 “정상”을 뜻하지 않아요 —
+    “<b>지시대로 했다</b>”만 뜻합니다. 지시가 틀렸으면 충실하게 틀린 걸 배포합니다.</div>
+  </div>
+
+  <div class="callout learn"><span class="tag">③ 수동 동기화 vs <code>automated</code> — 관측만 할지, 손을 댈지</span>
+    <p>Application에 <code>syncPolicy</code> 블록이 <b>없으면 수동</b>입니다. ArgoCD는 차이를 <b>보여주기만</b> 하고
+    당신이 <b>Sync</b> 버튼을 누르기 전엔 아무것도 건드리지 않습니다. 처음엔 반드시 여기서 시작합니다 —
+    <mark>읽기 전용 모드로 신뢰를 쌓은 뒤</mark> 자동으로 넘어갑니다.</p></div>
+
+  <div class="callout learn"><span class="tag">④ <code>selfHeal</code>과 <code>prune</code> — 이 튜토리얼에서 제일 위험한 두 글자</span>
+    <p><code>selfHeal: true</code> = 손으로 고친 걸 <b>git으로 되돌린다</b>. (원하는 동작)<br>
+    <code>prune: true</code> = git에서 <b>사라진 것</b>을 클러스터에서 <b>지운다</b>. (위험)<br>
+    파일 하나를 실수로 지우고 커밋하면, prune이 켜져 있을 때 ArgoCD는 그걸 “의도된 삭제”로 읽고
+    <mark>실제 서비스를 지웁니다</mark>. 그래서 이 저장소는 <b><code>prune: false</code>, <code>selfHeal: true</code></b>로 갑니다 —
+    자가 치유는 하되, 삭제는 절대 자동으로 하지 않는 조합.</p></div>
+
+  <div class="quiz">
+    <div class="q-tag">🧠 prune</div>
+    <div class="q"><code>prune: true</code>인 상태에서 실수로 <code>apps/ghost/deployment.yaml</code>을 지우고 커밋하면?</div>
+    <div class="quiz-opts">
+      <button class="quiz-opt" data-correct="true"><span class="mark">A</span><span>ArgoCD가 “이 리소스는 이제 원하지 않는군”으로 읽고 <b>돌고 있던 ghost를 실제로 삭제</b>합니다.</span></button>
+      <button class="quiz-opt"><span class="mark">B</span><span>파일이 없으니 무시하고 현 상태를 유지합니다.</span></button>
+      <button class="quiz-opt"><span class="mark">C</span><span>경고만 띄우고 사람 승인을 기다립니다.</span></button>
+    </div>
+    <div class="quiz-explain"><b>핵심:</b> ArgoCD에게 “git에 없다”와 “지워라”는 <b>같은 말</b>입니다. 실수한 <code>git rm</code> 하나가
+    운영 서비스 삭제가 되는 경로예요. <code>prune: false</code>는 그 경로를 끊습니다 — 대신 진짜로 지우고 싶을 땐 손으로 지워야 합니다. 그게 맞는 거래입니다.</div>
+  </div>
+
+  <div class="callout learn"><span class="tag">⑤ TLS secret은 <b>네임스페이스를 넘지 못한다</b></span>
+    <p>Ingress는 <b>자기 네임스페이스에 있는</b> TLS secret만 씁니다. 이 클러스터의 와일드카드 인증서
+    (<code>tls-secret</code>)는 <code>default</code>에 있고, 복제기가 없습니다. 그래서 <code>argocd</code> 네임스페이스로
+    <b>손으로 복사</b>해야 합니다 — <code>headlamp</code>도 똑같이 했습니다. cert-manager는 원본만 갱신하니,
+    <mark>갱신될 때마다(약 90일) 다시 복사</mark>해야 합니다.</p></div>
+
+  <ul class="tasklist">
+    <li><input type="checkbox"><span class="label"><code>Application</code>이 “git 위치 ↔ 클러스터 위치” <b>매핑</b>임을 안다</span></li>
+    <li><input type="checkbox"><span class="label"><b>Sync</b>와 <b>Health</b>가 독립된 사실임을 안다</span></li>
+    <li><input type="checkbox"><span class="label"><code>syncPolicy</code>가 없으면 <b>수동</b>임을 안다</span></li>
+    <li><input type="checkbox"><span class="label"><code>selfHeal</code>(되돌리기)과 <code>prune</code>(지우기)의 차이를 안다</span></li>
+    <li><input type="checkbox"><span class="label">TLS secret이 <b>네임스페이스를 못 넘는다</b>는 걸 안다</span></li>
+  </ul>
+
+
+  <!-- ============================================================
+       1. 사전 점검
+       ============================================================ -->
+  <h2 id="check">1. 사전 점검 — 명령 형태부터 고정</h2>
+  <p>아무것도 설치하기 전에, <b>앞으로 계속 쓸 명령 형태</b>가 이 노드에서 통하는지 확인합니다.
+  여기서 통하면 이후 모든 단계가 통합니다.</p>
+
+  <div class="code term"><div class="filename">터미널 · 노드 확인</div><pre><code>sudo k3s kubectl get nodes</code></pre></div>
+  <p class="expect"><b>성공:</b> 노드 한 개가 <code>STATUS = Ready</code>로 보입니다.</p>
+
+  <div class="quiz">
+    <div class="q-tag">🧠 왜 sudo k3s kubectl</div>
+    <div class="q">그냥 <code>kubectl</code>이 아니라 <code>sudo k3s kubectl</code>을 쓰는 이유는?</div>
+    <div class="quiz-opts">
+      <button class="quiz-opt" data-correct="true"><span class="mark">A</span><span>k3s의 kubeconfig(<code>/etc/rancher/k3s/k3s.yaml</code>)는 <b>root만 읽을 수 있고</b>, 이 노드에서 맨 <code>kubectl</code>은 TLS 에러가 납니다. <code>k3s kubectl</code>은 k3s가 자기 설정으로 직접 도는 형태라 항상 통합니다.</span></button>
+      <button class="quiz-opt"><span class="mark">B</span><span><code>kubectl</code>이 설치돼 있지 않아서.</span></button>
+      <button class="quiz-opt"><span class="mark">C</span><span>ArgoCD는 root 권한으로만 설치할 수 있어서.</span></button>
+    </div>
+    <div class="quiz-explain"><b>핵심:</b> 클러스터의 문제가 아니라 <b>이 노드의 접속 설정</b> 문제입니다.
+    나중에 <code>~/.kube/config</code>를 제대로 깔면 맨 <code>kubectl</code>도 됩니다 — 지금은 <b>확실히 되는 형태</b>로 고정하고 갑니다.</div>
+  </div>
+
+  <details>
+    <summary>문제가 생기면</summary>
+    <table class="plain">
+      <tr><td>permission denied</td><td><code>sudo</code>를 뺐습니다. 모든 명령에 <code>sudo</code>를 유지하세요.</td></tr>
+      <tr><td>command not found: k3s</td><td>PATH에 없습니다. <code>sudo /usr/local/bin/k3s kubectl get nodes</code>로 시도.</td></tr>
+      <tr><td>NotReady</td><td>노드 자체 문제입니다. ArgoCD 이전에 그것부터 해결해야 합니다.</td></tr>
+    </table>
+  </details>
+
+  <ul class="tasklist">
+    <li><input type="checkbox"><span class="label">노드가 <code>Ready</code>로 보인다</span></li>
+    <li><input type="checkbox"><span class="label">앞으로 모든 명령에 <code>sudo k3s kubectl</code>을 쓴다는 걸 안다</span></li>
+  </ul>
+
+
+  <!-- ============================================================
+       2. 설치
+       ============================================================ -->
+  <h2 id="install">2. ArgoCD 설치</h2>
+  <p>네임스페이스를 만들고 공식 매니페스트 하나로 설치합니다.</p>
+
+  <div class="callout why"><span class="tag">왜 네임스페이스를 따로?</span>
+    <p>네임스페이스는 클러스터 오브젝트의 <b>폴더</b>입니다. ArgoCD는 파드가 대여섯 개(controller, repo-server,
+    api-server, redis, dex 등) 붙어 다니는 <b>시스템</b>이라, 당신의 앱들과 섞이면 <code>get pods</code> 결과가
+    난장판이 됩니다. <code>argocd</code>라는 폴더에 몰아넣습니다.</p></div>
+
+  <div class="code term"><div class="filename">터미널 · 네임스페이스 생성</div><pre><code>sudo k3s kubectl create namespace argocd</code></pre></div>
+
+  <div class="code term"><div class="filename">터미널 · 공식 매니페스트로 설치</div><pre><code>sudo k3s kubectl apply -n argocd \
+  -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml</code></pre></div>
+  <p class="expect"><code>... created</code> 줄이 수십 개 지나갑니다. CRD·서비스어카운트·롤·디플로이먼트 —
+  쿠버네티스에게 <code>Application</code>이라는 <b>새 타입을 가르치고</b>, 자기 파드들을 올리는 중입니다.</p>
+
+  <div class="code term"><div class="filename">터미널 · 파드가 뜨는지 확인 (ARM 이미지 pull에 1~3분)</div><pre><code>sudo k3s kubectl get pods -n argocd</code></pre></div>
+  <p class="expect"><b>성공:</b> 파드 7개 안팎이 전부 <code>Running</code> / <code>READY 1/1</code>.
+  다 안정될 때까지 명령을 다시 쳐보세요.</p>
+
+  <div class="quiz">
+    <div class="q-tag">🧠 CRD</div>
+    <div class="q">저 매니페스트가 CRD를 설치한다는 건 무슨 뜻인가요?</div>
+    <div class="quiz-opts">
+      <button class="quiz-opt" data-correct="true"><span class="mark">A</span><span>쿠버네티스 API에 <b>새 오브젝트 종류</b>(<code>Application</code>)를 등록합니다 — 이후 <code>kubectl get application</code>이 Pod처럼 동작합니다.</span></button>
+      <button class="quiz-opt"><span class="mark">B</span><span>클러스터에 새 데이터베이스를 설치합니다.</span></button>
+      <button class="quiz-opt"><span class="mark">C</span><span>기존 Deployment 타입을 덮어씁니다.</span></button>
+    </div>
+    <div class="quiz-explain"><b>핵심:</b> 쿠버네티스가 확장 가능한 이유가 이겁니다. ArgoCD는 “쿠버네티스 위에 얹힌 별도 도구”가 아니라
+    <b>쿠버네티스의 어휘를 늘린</b> 것에 가깝습니다. cert-manager의 <code>Certificate</code>도 정확히 같은 방식입니다.</div>
+  </div>
+
+  <details>
+    <summary>문제가 생기면</summary>
+    <table class="plain">
+      <tr><td>ImagePullBackOff</td><td>아직 당기는 중이거나 느린 겁니다. 기다렸다 재확인. <code>sudo k3s kubectl describe pod -n argocd &lt;파드명&gt;</code></td></tr>
+      <tr><td>Pending</td><td>스케줄러가 자원을 기다리는 중. 작은 노드에선 1분쯤 걸립니다. 계속되면 <code>describe</code>로 이유 확인.</td></tr>
+      <tr><td>argocd-dex CrashLoop</td><td>여기선 무해합니다 — dex는 외부 SSO용이고 우리는 안 씁니다. 로그인을 막지 않습니다.</td></tr>
+    </table>
+  </details>
+
+  <ul class="tasklist">
+    <li><input type="checkbox"><span class="label"><code>argocd</code> 네임스페이스를 만들었다</span></li>
+    <li><input type="checkbox"><span class="label">공식 매니페스트를 apply했다</span></li>
+    <li><input type="checkbox"><span class="label">파드가 전부 <code>Running</code>이 됐다</span></li>
+    <li><input type="checkbox"><span class="label">CRD가 “새 오브젝트 타입 등록”임을 안다</span></li>
+  </ul>
+
+
+  <!-- ============================================================
+       3. Traefik 뒤에서 돌게
+       ============================================================ -->
+  <h2 id="insecure">3. Traefik 뒤에서 돌게 만들기 (<code>--insecure</code>)</h2>
+  <p><code>argocd-server</code>에게 “평문 HTTP로 서빙해라”라고 시킵니다. 이상하게 들리지만, 여기선 <b>그게 맞습니다</b>.</p>
+
+  <div class="callout why"><span class="tag">왜 일부러 insecure를?</span>
+    <p>ArgoCD는 기본적으로 <b>자기가 HTTPS를 하고</b> HTTP 요청을 HTTPS로 리다이렉트합니다.
+    그런데 이 클러스터에선 <b>Traefik이 이미 TLS를 끝냅니다</b>. HTTPS 하는 놈 뒤에 HTTPS 하는 놈을 두면
+    리다이렉트가 서로를 튕겨 <b>무한 루프</b>가 납니다(<code>ERR_TOO_MANY_REDIRECTS</code>).
+    <code>--insecure</code>는 ArgoCD를 <b>내부에서만</b> 평문으로 만듭니다 —
+    <mark>바깥에서 오는 트래픽은 여전히 Traefik이 암호화</mark>합니다. 다른 앱들과 똑같은 구조예요.</p></div>
+
+  <div class="code term"><div class="filename">터미널 · args에 플래그 추가</div><pre><code>sudo k3s kubectl -n argocd patch deployment argocd-server --type json \
+  -p '[{"op":"add","path":"/spec/template/spec/containers/0/args/-","value":"--insecure"}]'</code></pre></div>
+
+  <div class="code term"><div class="filename">터미널 · 새 파드가 뜰 때까지 대기</div><pre><code>sudo k3s kubectl -n argocd rollout status deployment argocd-server</code></pre></div>
+  <p class="expect"><b>성공:</b> <code>deployment "argocd-server" successfully rolled out</code></p>
+
+  <div class="quiz">
+    <div class="q-tag">🧠 insecure가 안전한 이유</div>
+    <div class="q"><code>--insecure</code>인데 왜 보안이 안 깨지나요?</div>
+    <div class="quiz-opts">
+      <button class="quiz-opt" data-correct="true"><span class="mark">A</span><span>평문인 구간은 <b>클러스터 내부</b>(Traefik → argocd-server)뿐이고, 인터넷에서 오는 구간은 Traefik이 TLS로 감쌉니다. 암호화를 <b>한 곳에서만</b> 하는 구조입니다.</span></button>
+      <button class="quiz-opt"><span class="mark">B</span><span>안 안전합니다. 그냥 감수하는 겁니다.</span></button>
+      <button class="quiz-opt"><span class="mark">C</span><span>ArgoCD가 내부적으로 다른 암호화를 씁니다.</span></button>
+    </div>
+    <div class="quiz-explain"><b>핵심:</b> <b>TLS 종료(termination)</b>는 한 군데서 하는 게 원칙입니다. 여기선 Traefik이 그 지점이에요.
+    <code>insecure</code>라는 이름 때문에 오해하기 쉽지만, 정확히는 “<b>내가 TLS를 안 한다</b>”는 선언입니다 — 앞의 리버스 프록시가 하니까.</div>
+  </div>
+
+  <details>
+    <summary>문제가 생기면</summary>
+    <table class="plain">
+      <tr><td>already has value</td><td>두 번 실행했습니다. 무해합니다 — 플래그는 이미 들어갔으니 넘어가세요.</td></tr>
+      <tr><td>rollout이 멈춤</td><td>새 파드가 pull/스케줄에 걸린 겁니다. <code>sudo k3s kubectl get pods -n argocd</code>로 확인.</td></tr>
+    </table>
+  </details>
+
+  <ul class="tasklist">
+    <li><input type="checkbox"><span class="label"><code>--insecure</code> 패치를 적용했다</span></li>
+    <li><input type="checkbox"><span class="label">rollout이 성공했다</span></li>
+    <li><input type="checkbox"><span class="label">TLS 종료를 <b>한 곳(Traefik)</b>에서만 하는 이유를 안다</span></li>
+  </ul>
+
+
+  <!-- ============================================================
+       4. UI 노출
+       ============================================================ -->
+  <h2 id="expose">4. UI를 <code>argocd.bit-habit.com</code>에 노출</h2>
+  <p>와일드카드 TLS secret을 <code>argocd</code> 네임스페이스로 복사한 뒤, 저장소에 <b>이미 있는</b> ingress를 적용합니다.</p>
+
+  <div class="code term"><div class="filename">터미널 · 인증서+키를 꺼내 argocd에 새 secret으로 생성</div><pre><code>sudo k3s kubectl get secret tls-secret -n default -o jsonpath='{.data.tls\.crt}' | base64 -d | sudo tee /tmp/tls.crt >/dev/null
+sudo k3s kubectl get secret tls-secret -n default -o jsonpath='{.data.tls\.key}' | base64 -d | sudo tee /tmp/tls.key >/dev/null
+sudo k3s kubectl create secret tls tls-secret -n argocd --cert=/tmp/tls.crt --key=/tmp/tls.key
+sudo rm -f /tmp/tls.crt /tmp/tls.key</code></pre></div>
+  <p class="expect"><b>성공:</b> <code>secret/tls-secret created</code>.
+  (YAML을 통째로 복사하는 것보다 <b>원본 인증서+키에서 새로 만드는</b> 편이 깨끗합니다 — 지워야 할 낡은 메타데이터가 안 따라옵니다.)</p>
+
+  <div class="quiz">
+    <div class="q-tag">🧠 왜 복사가 필요한가</div>
+    <div class="q"><code>default</code> 네임스페이스에 이미 있는 <code>tls-secret</code>을 argocd ingress가 그냥 쓰면 안 되나요?</div>
+    <div class="quiz-opts">
+      <button class="quiz-opt" data-correct="true"><span class="mark">A</span><span>안 됩니다. Ingress는 <b>자기와 같은 네임스페이스의</b> secret만 참조할 수 있습니다 — 네임스페이스는 그런 격리 경계입니다.</span></button>
+      <button class="quiz-opt"><span class="mark">B</span><span>됩니다. 그냥 관례상 복사하는 겁니다.</span></button>
+      <button class="quiz-opt"><span class="mark">C</span><span>secret 이름이 같으면 자동으로 공유됩니다.</span></button>
+    </div>
+    <div class="quiz-explain"><b>핵심:</b> 네임스페이스는 이름 정리용 폴더이면서 동시에 <b>보안 경계</b>입니다.
+    이걸 자동화하는 도구(reflector, kubed 같은 secret 복제기)가 있지만 이 클러스터엔 없습니다 —
+    그래서 인증서가 갱신될 때마다(약 90일) 이 복사를 <b>다시</b> 해야 한다는 숙제가 남습니다.</div>
+  </div>
+
+  <div class="code term"><div class="filename">터미널 · 저장소에 이미 있는 ingress 적용</div><pre><code>sudo k3s kubectl apply -f /home/ubuntu/workspace/bit-habit-infra/apps/argocd/ingress.yaml
+sudo k3s kubectl get ingress -n argocd</code></pre></div>
+  <p class="expect"><b>성공:</b> <code>argocd-ingress</code>가 호스트 <code>argocd.bit-habit.com</code>으로 보입니다.
+  와일드카드 DNS가 이미 이 서버를 가리키므로 이름은 바로 풀립니다.</p>
+
+  <div class="callout note"><span class="tag">이 ingress가 실제로 하는 말</span>
+    <p><code>argocd.bit-habit.com</code>으로 오는 <code>websecure</code>(443) 트래픽을
+    <code>argocd-server</code> 서비스의 <b>80 포트</b>로 넘겨라 — 그리고 TLS는 <code>tls-secret</code>으로 처리해라.
+    <b>80</b>인 게 핵심입니다: 3단계에서 <code>--insecure</code>를 켰기 때문에 평문 포트로 보내는 겁니다.</p></div>
+
+  <details>
+    <summary>문제가 생기면</summary>
+    <table class="plain">
+      <tr><td>브라우저에서 404</td><td>ingress는 붙었는데 서비스명/포트가 안 맞는 경우. 저장소 ingress는 <code>argocd-server:80</code>을 봅니다 — 3단계가 적용돼 있어야 맞습니다.</td></tr>
+      <tr><td>인증서 경고</td><td><code>argocd</code>의 <code>tls-secret</code>이 없거나 낡았습니다. 위 복사 블록을 다시 실행.</td></tr>
+      <tr><td>ERR_TOO_MANY_REDIRECTS</td><td>3단계가 안 먹었습니다. <code>sudo k3s kubectl -n argocd get deploy argocd-server -o yaml | grep insecure</code>로 확인.</td></tr>
+    </table>
+  </details>
+
+  <ul class="tasklist">
+    <li><input type="checkbox"><span class="label">TLS secret을 <code>argocd</code> 네임스페이스로 복사했다</span></li>
+    <li><input type="checkbox"><span class="label">ingress를 적용하고 <code>get ingress</code>로 확인했다</span></li>
+    <li><input type="checkbox"><span class="label">secret이 네임스페이스를 못 넘는 이유를 안다</span></li>
+    <li><input type="checkbox"><span class="label">ingress가 <b>80 포트</b>를 보는 이유를 안다</span></li>
+  </ul>
+
+
+  <!-- ============================================================
+       5. 로그인
+       ============================================================ -->
+  <h2 id="login">5. 로그인하고 보드 읽기</h2>
+
+  <div class="code term"><div class="filename">터미널 · 초기 admin 비밀번호 확인</div><pre><code>sudo k3s kubectl -n argocd get secret argocd-initial-admin-secret \
+  -o jsonpath='{.data.password}' | base64 -d; echo</code></pre></div>
+  <p class="expect">임의의 문자열이 출력됩니다. 아이디는 <code>admin</code>.
+  브라우저에서 <code>https://argocd.bit-habit.com</code>으로 접속해 로그인하세요.</p>
+
+  <div class="callout good"><span class="tag">🔎 여기서 1분만 머무르세요</span>
+    <p>지금 보이는 빈 <b>Applications</b> 보드가 이 제품의 전부입니다. 앞으로 타일 하나가 Application 하나이고,
+    각 타일은 <b>독립된 두 사실</b>을 보여줍니다 — <b>Sync</b>(클러스터가 git과 같은가)와
+    <b>Health</b>(그게 실제로 도는가). 0.5절의 ②가 여기서 실물이 됩니다.</p></div>
+
+  <div class="callout warn"><span class="tag">🔐 권장 — 비밀번호를 바꾸고 부트스트랩 secret 삭제</span>
+    <p>UI에서 <b>User Info → Update Password</b>로 바꾼 다음, 초기 비밀번호가 평문으로 들어 있는
+    secret을 지웁니다. 안 지우면 클러스터에 읽을 수 있는 관리자 비밀번호가 계속 남습니다.</p>
+    <div class="code term" style="margin-top:10px"><div class="filename">터미널</div><pre><code>sudo k3s kubectl -n argocd delete secret argocd-initial-admin-secret</code></pre></div></div>
+
+  <div class="quiz">
+    <div class="q-tag">🧠 초기 비밀번호</div>
+    <div class="q">비밀번호를 바꾼 뒤 <code>argocd-initial-admin-secret</code>을 지우는 이유는?</div>
+    <div class="quiz-opts">
+      <button class="quiz-opt" data-correct="true"><span class="mark">A</span><span>그 secret에 <b>초기 관리자 비밀번호가 그대로</b> 들어 있어서 — 클러스터 secret을 읽을 수 있는 사람이면 누구나 볼 수 있습니다. 부트스트랩이 끝나면 존재 이유가 없습니다.</span></button>
+      <button class="quiz-opt"><span class="mark">B</span><span>디스크 용량 절약을 위해.</span></button>
+      <button class="quiz-opt"><span class="mark">C</span><span>지우지 않으면 ArgoCD가 비밀번호를 계속 되돌립니다.</span></button>
+    </div>
+    <div class="quiz-explain"><b>핵심:</b> 부트스트랩 크리덴셜은 <b>수명이 짧아야</b> 합니다. 쓰고 나면 지우는 것 —
+    이 클러스터의 다른 secret들이 gitignore된 것과 같은 이유입니다.</div>
+  </div>
+
+  <details>
+    <summary>선택 — ArgoCD CLI (arm64). 없어도 이 튜토리얼은 다 됩니다</summary>
+    <div class="code term"><div class="filename">터미널</div><pre><code>sudo curl -sSL -o /usr/local/bin/argocd \
+  https://github.com/argoproj/argo-cd/releases/latest/download/argocd-linux-arm64
+sudo chmod +x /usr/local/bin/argocd
+argocd login argocd.bit-habit.com --username admin</code></pre></div>
+    <p class="expect">여기 나오는 모든 작업은 웹 UI로 가능합니다. CLI는 편의일 뿐이니 건너뛰어도 됩니다.</p>
+  </details>
+
+  <ul class="tasklist">
+    <li><input type="checkbox"><span class="label"><code>https://argocd.bit-habit.com</code>에 로그인했다</span></li>
+    <li><input type="checkbox"><span class="label">빈 Applications 보드를 봤다</span></li>
+    <li><input type="checkbox"><span class="label">비밀번호를 바꾸고 초기 secret을 지웠다</span></li>
+  </ul>
+
+
+  <!-- ============================================================
+       6. 첫 Application
+       ============================================================ -->
+  <h2 id="first">6. 첫 Application — 작은 앱 하나, <b>수동</b> 동기화</h2>
+  <p>이제 핵심 루프를 <b>눈으로</b> 봅니다. 자동은 아직입니다.</p>
+
+  <div class="callout why"><span class="tag">왜 수동으로, 왜 한 개만</span>
+    <p>이 Application에는 <code>syncPolicy</code>가 <b>없습니다</b>. 즉 ArgoCD는 git과 클러스터의 차이를
+    <b>보여주기만</b> 하고, 당신이 <b>Sync</b>를 누르기 전엔 아무것도 안 건드립니다.
+    대상은 <code>startpage</code> — git의 매니페스트 그대로 이미 돌고 있는 Deployment 하나짜리 앱이라,
+    <mark>가능한 가장 안전한 첫 목표</mark>입니다.</p></div>
+
+  <div class="code term"><div class="filename">터미널 · Application 생성 (수동 동기화)</div><pre><code>sudo k3s kubectl apply -n argocd -f - &lt;&lt;'EOF'
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: startpage
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/bookseal/bit-habit-infra.git
+    targetRevision: main
+    path: apps/startpage
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: default
+  # syncPolicy 블록 없음 = 수동. 관찰만 하고 스스로 손대지 않는다.
+EOF</code></pre></div>
+  <p class="expect"><b>성공:</b> <code>application.argoproj.io/startpage created</code>. UI를 새로고침하면 타일이 하나 생깁니다.</p>
+
+  <div class="callout good"><span class="tag">👀 타일을 읽어보세요</span>
+    <p>십중팔구 이미 <b>Synced + Healthy</b>일 겁니다 — 지금 도는 앱이 바로 이 매니페스트에서 apply된 것이니까요.
+    그게 “아하” 포인트입니다: <mark>git은 이미 클러스터와 같았습니다.</mark> ArgoCD가 한 일은 그 사실을
+    <b>처음으로 증명 가능하게</b> 만든 것뿐입니다. 만약 <b>OutOfSync</b>라면 타일 →
+    <b>App Diff</b>에서 정확히 뭐가 어긋났는지 보고, <b>Sync</b>로 git에 맞추세요.</p></div>
+
+  <div class="code term"><div class="filename">터미널 · 같은 사실을 CLI로도</div><pre><code>sudo k3s kubectl get application -n argocd</code></pre></div>
+  <p class="expect"><code>startpage</code>의 SYNC STATUS와 HEALTH STATUS가 보입니다 — 타일과 같은 두 사실입니다.</p>
+
+  <div class="quiz">
+    <div class="q-tag">🧠 수동 모드의 의미</div>
+    <div class="q">이 Application 상태에서 누가 <code>startpage</code>를 손으로 replicas=2로 바꾸면?</div>
+    <div class="quiz-opts">
+      <button class="quiz-opt" data-correct="true"><span class="mark">A</span><span>타일이 <b>OutOfSync</b>로 바뀌어 <b>알려주지만</b>, 되돌리지는 <b>않습니다</b>. 당신이 Sync를 눌러야 1로 돌아갑니다.</span></button>
+      <button class="quiz-opt"><span class="mark">B</span><span>즉시 자동으로 1로 되돌립니다.</span></button>
+      <button class="quiz-opt"><span class="mark">C</span><span>ArgoCD가 git의 값을 2로 고칩니다.</span></button>
+    </div>
+    <div class="quiz-explain"><b>핵심:</b> 이게 수동 모드의 가치입니다 — <b>드리프트 감지는 얻고, 자동 개입은 아직 안 주는</b> 상태.
+    ArgoCD가 뭘 하려는지 며칠 지켜본 뒤에 자동을 켜는 게 순서입니다. 참고로 ArgoCD는 <b>git을 절대 고치지 않습니다</b>. 방향은 언제나 git → 클러스터.</div>
+  </div>
+
+  <details>
+    <summary>실험(선택) — 일부러 드리프트를 만들어 ArgoCD가 잡는 걸 보기</summary>
+    <div class="code term"><div class="filename">터미널</div><pre><code>sudo k3s kubectl scale deployment startpage -n default --replicas=2</code></pre></div>
+    <p class="expect">UI 새로고침 → <b>OutOfSync</b>(git은 1이라고 하니까). <b>Sync</b>를 누르면 다시 1.
+    수동 모드라서 <b>누르기 전엔 스스로 안 고칩니다</b> — 여기서 시작하는 이유가 이겁니다.
+    이 한 번의 실험이 GitOps의 전부를 보여줍니다.</p>
+  </details>
+
+  <ul class="tasklist">
+    <li><input type="checkbox"><span class="label"><code>startpage</code> Application을 만들었다</span></li>
+    <li><input type="checkbox"><span class="label">타일의 Sync / Health 두 값을 읽었다</span></li>
+    <li><input type="checkbox"><span class="label"><code>kubectl get application</code>으로도 확인했다</span></li>
+    <li><input type="checkbox"><span class="label">(선택) 드리프트를 만들고 ArgoCD가 잡는 걸 봤다</span></li>
+    <li><input type="checkbox"><span class="label">ArgoCD가 <b>git을 고치지 않는다</b>는 걸 안다</span></li>
+  </ul>
+
+
+  <!-- ============================================================
+       7. 전체 확대
+       ============================================================ -->
+  <h2 id="all">7. 저장소 전체로 확대 (그리고 <code>base/</code>는 맨 마지막)</h2>
+  <p>루프가 이해됐으면 <code>apps/</code> 전체를 맡깁니다. 여기서 처음으로 <b>자동</b>을 켭니다.</p>
+
+  <div class="callout why"><span class="tag">두 개의 다이얼</span>
+    <p><code>selfHeal: true</code> = 손으로 고친 걸 git으로 되돌린다.
+    <code>prune: false</code> = git에서 사라졌다는 이유만으로는 <b>절대 지우지 않는다</b>.
+    이 조합이 우리가 원하는 것입니다 — <b>자가 치유는 하되, 삭제는 사람 손으로</b>.
+    저장소의 <code>apps/argocd/application.yaml</code>도 정확히 이 설정입니다.</p></div>
+
+  <div class="code term"><div class="filename">터미널 · apps/ 전체 관리 (자동 치유, prune 없음)</div><pre><code>sudo k3s kubectl apply -n argocd -f - &lt;&lt;'EOF'
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: bit-habit-apps
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/bookseal/bit-habit-infra.git
+    targetRevision: main
+    path: apps
+    directory:
+      recurse: true
+      exclude: "argocd/*"   # ArgoCD가 자기 자신의 Application 파일과 싸우지 않게
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: default
+  syncPolicy:
+    automated:
+      prune: false
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+EOF</code></pre></div>
+  <p class="expect">보드가 타일로 채워집니다. 일부는 <b>OutOfSync</b>일 수 있습니다 —
+  살아 있는 클러스터가 git에서 흘러간 지점입니다. <b>자동 치유를 믿기 전에 각 diff를 먼저 보세요.</b>
+  (앞의 <code>startpage</code> Application은 중복이니 지워도 됩니다:
+  <code>sudo k3s kubectl delete application startpage -n argocd</code>)</p>
+
+  <div class="quiz">
+    <div class="q-tag">🧠 exclude</div>
+    <div class="q"><code>exclude: "argocd/*"</code>가 없으면 무슨 일이 생기나요?</div>
+    <div class="quiz-opts">
+      <button class="quiz-opt" data-correct="true"><span class="mark">A</span><span>ArgoCD가 <b>자기 자신의 Application 정의</b>를 관리 대상으로 삼아, 스스로를 계속 동기화하려는 이상한 재귀가 생깁니다.</span></button>
+      <button class="quiz-opt"><span class="mark">B</span><span>아무 차이 없습니다.</span></button>
+      <button class="quiz-opt"><span class="mark">C</span><span>ArgoCD가 즉시 삭제됩니다.</span></button>
+    </div>
+    <div class="quiz-explain"><b>핵심:</b> <code>apps/argocd/</code>에는 Application 정의와 ingress가 들어 있습니다.
+    ArgoCD가 자기를 관리하게 만드는 패턴(app-of-apps)도 있지만, 그건 <b>의도적으로</b> 설계해야 하는 것 —
+    실수로 그렇게 되면 디버깅이 아주 괴로워집니다.</div>
+  </div>
+
+  <div class="callout danger"><span class="tag">🛑 <code>base/</code>는 맨 마지막에, 그리고 보고 나서</span>
+    <p><code>base/ingress.yaml</code>은 <b>모든 서브도메인의 라우팅 표</b>입니다. 여기서 동기화 한 번 잘못되면
+    사이트가 <b>한꺼번에</b> 내려갑니다. apps 보드가 조용해진 뒤에 붙이고, 그때도 <b>수동으로 두는 것</b>을 고려하세요.
+    저장소 파일에는 <code>base/</code>와 <code>apps/</code> Application이 둘 다 정의돼 있습니다:</p>
+    <div class="code term" style="margin-top:10px"><div class="filename">터미널 · 준비됐을 때만</div><pre><code>sudo k3s kubectl apply -f /home/ubuntu/workspace/bit-habit-infra/apps/argocd/application.yaml</code></pre></div>
+    <p style="margin-top:8px;font-size:.92rem">엣지까지 넘길 준비가 됐을 때 적용하세요. 아니면
+    <code>bit-habit-base</code> 쪽만 떼어내 <code>selfHeal: false</code>로 유지하는 것도 좋은 선택입니다.</p></div>
+
+  <div class="quiz">
+    <div class="q-tag">🧠 왜 base가 위험한가</div>
+    <div class="q"><code>base/</code>를 앱들보다 <b>나중에</b> 맡기는 이유는?</div>
+    <div class="quiz-opts">
+      <button class="quiz-opt" data-correct="true"><span class="mark">A</span><span><code>base/ingress.yaml</code>은 <b>모든 도메인의 라우팅</b>이라, 실수의 폭발 반경이 “앱 하나”가 아니라 <b>사이트 전체</b>입니다.</span></button>
+      <button class="quiz-opt"><span class="mark">B</span><span><code>base/</code>는 파일이 많아서 동기화가 느립니다.</span></button>
+      <button class="quiz-opt"><span class="mark">C</span><span>ArgoCD는 ingress를 다룰 수 없습니다.</span></button>
+    </div>
+    <div class="quiz-explain"><b>핵심:</b> 자동화를 도입할 땐 <b>폭발 반경이 작은 것부터</b>. startpage 하나 → apps 전체 → 마지막에 엣지.
+    각 단계에서 신뢰를 확인하고 넘어가는 순서 자체가 이 튜토리얼의 설계입니다.</div>
+  </div>
+
+  <div class="callout warn"><span class="tag">🔑 GitOps가 여기서 아직 못 하는 것: secret</span>
+    <p>Route53 키, basic-auth, oauth2-proxy 클라이언트 시크릿은 <b>gitignore</b>돼 있습니다. 즉 ArgoCD가 동기화할 수 없고,
+    빈 클러스터에 이 저장소를 그대로 적용하면 <b>secret이 빠진 채</b> 올라옵니다.
+    이걸 닫는 게 진짜 다음 과제입니다 — Sealed Secrets나 External Secrets.
+    그전까지 secret은 <b>수동 <code>kubectl apply</code></b>로 남습니다.
+    (<a href="index.html#grow">개요 페이지의 “키울 것” 목록</a> 참고)</p></div>
+
+  <ul class="tasklist">
+    <li><input type="checkbox"><span class="label"><code>bit-habit-apps</code> Application을 만들었다</span></li>
+    <li><input type="checkbox"><span class="label">OutOfSync 타일의 diff를 <b>먼저 읽어봤다</b></span></li>
+    <li><input type="checkbox"><span class="label"><code>exclude: "argocd/*"</code>가 왜 있는지 안다</span></li>
+    <li><input type="checkbox"><span class="label"><code>base/</code>를 마지막에 두는 이유를 안다</span></li>
+    <li><input type="checkbox"><span class="label">secret이 아직 GitOps 밖에 있다는 걸 안다</span></li>
+  </ul>
+
+
+  <!-- ============================================================
+       8. 롤백
+       ============================================================ -->
+  <h2 id="rollback">8. 되돌리기 — 안전한 제거</h2>
+  <div class="callout danger"><span class="tag">⚠️ 먼저 알아야 할 것</span>
+    <p>Application에 <code>resources-finalizer</code>가 붙어 있으면, Application을 지울 때
+    <b>그 앱의 실제 리소스까지 연쇄 삭제</b>됩니다. 이 튜토리얼의 Application들에는 그게 없어서
+    지워도 돌고 있는 앱은 그대로입니다 — 하지만 <b>지우기 전에 항상 확인</b>하세요.</p></div>
+
+  <div class="code term"><div class="filename">터미널 · Application부터 제거 (앱은 계속 돌아감)</div><pre><code>sudo k3s kubectl delete application --all -n argocd</code></pre></div>
+
+  <div class="code term"><div class="filename">터미널 · ArgoCD 자체 제거</div><pre><code>sudo k3s kubectl delete -n argocd \
+  -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
+sudo k3s kubectl delete namespace argocd</code></pre></div>
+  <p class="expect">클러스터는 push 모델로 돌아갑니다 — <b>앱은 전부 그대로 돕니다</b>.
+  ArgoCD는 워크로드를 소유한 적이 없고, 지켜봤을 뿐이니까요.</p>
+
+  <div class="quiz">
+    <div class="q-tag">🧠 소유 vs 관찰</div>
+    <div class="q">ArgoCD를 통째로 지워도 앱들이 계속 도는 이유는?</div>
+    <div class="quiz-opts">
+      <button class="quiz-opt" data-correct="true"><span class="mark">A</span><span>ArgoCD는 <b>일반 쿠버네티스 리소스를 apply</b>했을 뿐입니다. Deployment는 쿠버네티스가 굴리고 있고, ArgoCD는 그게 git과 같은지 <b>지켜보던</b> 것뿐이에요.</span></button>
+      <button class="quiz-opt"><span class="mark">B</span><span>ArgoCD가 백업을 남겨두기 때문에.</span></button>
+      <button class="quiz-opt"><span class="mark">C</span><span>사실 앱들도 같이 멈춥니다.</span></button>
+    </div>
+    <div class="quiz-explain"><b>핵심:</b> 이 성질이 ArgoCD 도입을 <b>되돌리기 쉬운 결정</b>으로 만듭니다.
+    런타임에 끼어드는 게 아니라 <code>apply</code>를 대신 쳐주는 존재라서, 빼도 남는 건 평범한 쿠버네티스 오브젝트뿐입니다.
+    새 도구를 도입할 때 항상 물어야 할 질문이기도 합니다 — <b>“이걸 빼면 뭐가 남지?”</b></div>
+  </div>
+
+  <ul class="tasklist">
+    <li><input type="checkbox"><span class="label">finalizer가 연쇄 삭제를 일으킬 수 있다는 걸 안다</span></li>
+    <li><input type="checkbox"><span class="label">제거 순서(Application → ArgoCD)를 안다</span></li>
+    <li><input type="checkbox"><span class="label">ArgoCD가 앱을 <b>소유하지 않는다</b>는 걸 안다</span></li>
+  </ul>
+
+
+  <!-- ============================================================
+       9. 마무리
+       ============================================================ -->
+  <h2 id="recap">9. 마무리 · 이해도 체크</h2>
+  <p>명령이 아니라 <b>머릿속에 남았는지</b>를 확인하세요. 다 채우면 이 페이지가 100%가 됩니다. 🎉</p>
+  <ul class="tasklist">
+    <li><input type="checkbox"><span class="label"><b>push와 pull</b>의 차이를 한 문장으로 설명할 수 있다</span></li>
+    <li><input type="checkbox"><span class="label"><b>드리프트</b>가 무엇이고 왜 조용한지 설명할 수 있다</span></li>
+    <li><input type="checkbox"><span class="label"><code>Application</code>이 <b>매핑</b>이라는 걸 설명할 수 있다</span></li>
+    <li><input type="checkbox"><span class="label"><b>Sync</b>와 <b>Health</b>가 독립임을 예로 들 수 있다</span></li>
+    <li><input type="checkbox"><span class="label"><code>selfHeal</code>과 <code>prune</code>을 구분할 수 있다</span></li>
+    <li><input type="checkbox"><span class="label"><code>prune: false</code>를 고른 이유를 설명할 수 있다</span></li>
+    <li><input type="checkbox"><span class="label"><code>--insecure</code>가 왜 안전한지 설명할 수 있다</span></li>
+    <li><input type="checkbox"><span class="label">TLS secret을 왜 복사해야 하는지 안다</span></li>
+    <li><input type="checkbox"><span class="label"><b>수동 → apps → base</b> 순서의 이유를 안다</span></li>
+    <li><input type="checkbox"><span class="label">secret이 아직 GitOps 밖이라는 걸, 그리고 그 다음 과제를 안다</span></li>
+  </ul>
+
+  <div class="callout learn"><span class="tag">이번에 얻은 감각</span>
+    <p>“저장소가 곧 현실”이라는 말이 <b>믿음</b>에서 <b>기계가 강제하는 사실</b>로 바뀌었습니다.
+    그리고 자동화를 도입하는 순서도 함께 얻었습니다 — <b>관측 먼저, 개입은 나중, 폭발 반경이 작은 것부터</b>.
+    이 순서는 다음에 무엇을 자동화하든 똑같이 적용됩니다.</p></div>
+
+  <div class="toolbar"><button id="reset">진행 상황 초기화</button></div>
+
+  <div class="pager">
+    <a href="index.html"><span>돌아가기</span><b>← 인프라 개요</b></a>
+    <a class="next" href="index.html#grow"><span>다음</span><b>키울 것 (Sealed Secrets) →</b></a>
+  </div>
+
+  <footer>
+    bit-habit · ArgoCD 설치 튜토리얼 · 한 단계씩 실행하고, 출력을 확인하고, 다음으로 ·
+    맥락: <a href="index.html#gitops">infra.bit-habit.com/#gitops</a>
+  </footer>
+
+</div>
+
+<script type="module">
+  // Mermaid는 CDN 모듈이라 첫 로드에 인터넷이 필요합니다.
+  // 퀴즈와 체크리스트는 오프라인에서도 완전히 동작합니다.
+  import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
+  mermaid.initialize({
+    startOnLoad: true,
+    theme: 'neutral',
+    themeVariables: { fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace', fontSize: '14px' }
+  });
+</script>
+
+<script>
+  // ---- 복사 버튼 ----
+  document.querySelectorAll('.code').forEach(function (box) {
+    var code = box.querySelector('code');
+    var btn = document.createElement('button');
+    btn.className = 'copy';
+    btn.type = 'button';
+    btn.textContent = '복사';
+    btn.addEventListener('click', function () {
+      navigator.clipboard.writeText(code.textContent).then(function () {
+        btn.textContent = '복사됨';
+        btn.classList.add('done');
+        setTimeout(function () { btn.textContent = '복사'; btn.classList.remove('done'); }, 1400);
+      });
+    });
+    box.appendChild(btn);
+  });
+
+  // ---- 체크리스트: localStorage에 저장, 진행 바 연동 ----
+  var KEY = 'argocd-tutorial-progress';
+  var boxes = Array.prototype.slice.call(document.querySelectorAll('ul.tasklist input[type=checkbox]'));
+  var state = {};
+  try { state = JSON.parse(localStorage.getItem(KEY) || '{}'); } catch (e) { state = {}; }
+
+  var bar = document.getElementById('bar');
+  var label = document.getElementById('barlabel');
+
+  function render() {
+    var done = 0;
+    boxes.forEach(function (cb, i) {
+      var on = !!state[i];
+      cb.checked = on;
+      cb.closest('li').classList.toggle('on', on);
+      if (on) done++;
+    });
+    var pct = boxes.length ? Math.round((done / boxes.length) * 100) : 0;
+    bar.style.width = pct + '%';
+    label.textContent = pct + '%  ·  ' + done + '/' + boxes.length;
+    if (pct === 100) { label.textContent = '100% 🎉'; }
+  }
+
+  boxes.forEach(function (cb, i) {
+    cb.addEventListener('change', function () {
+      state[i] = cb.checked;
+      localStorage.setItem(KEY, JSON.stringify(state));
+      render();
+    });
+    // 라벨 클릭으로도 토글
+    var lbl = cb.parentElement.querySelector('.label');
+    if (lbl) lbl.addEventListener('click', function () { cb.checked = !cb.checked; cb.dispatchEvent(new Event('change')); });
+  });
+
+  document.getElementById('reset').addEventListener('click', function () {
+    state = {};
+    localStorage.removeItem(KEY);
+    render();
+  });
+
+  render();
+
+  // ---- 퀴즈 ----
+  document.querySelectorAll('.quiz').forEach(function (quiz) {
+    quiz.querySelectorAll('.quiz-opt').forEach(function (opt) {
+      opt.addEventListener('click', function () {
+        if (quiz.classList.contains('answered')) return;
+        quiz.classList.add('answered');
+        quiz.querySelectorAll('.quiz-opt').forEach(function (o) {
+          if (o.dataset.correct === 'true') o.classList.add('right');
+        });
+        if (opt.dataset.correct !== 'true') opt.classList.add('wrong');
+      });
+    });
+  });
+</script>
+</body>
+</html>
