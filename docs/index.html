@@ -74,6 +74,46 @@
       .badge.gitops { background:#e36209; }
       .badge.grow { background:#c0392b; }
       .badge.retro { background:#0b7285; }
+      /* ---- the learning ladder: hero rungs ---- */
+      .ladder { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:9px; margin:20px 0 6px; }
+      .rung { border:1px solid var(--line); border-radius:11px; padding:11px 13px; background:#fff; color:var(--ink);
+              display:flex; flex-direction:column; gap:2px; }
+      .rung:hover { border-color:var(--accent); text-decoration:none; box-shadow:0 2px 10px rgba(45,108,223,.09); }
+      .rung b { font-size:.72rem; font-weight:800; letter-spacing:.06em; color:var(--accent); }
+      .rung span { font-size:.95rem; font-weight:600; line-height:1.3; }
+      .rung em { font-style:normal; font-size:.76rem; color:var(--muted); }
+      .rung.ref b { color:var(--muted); }
+      /* ---- stage dividers ---- */
+      .stage { display:flex; gap:16px; align-items:flex-start; margin:64px 0 8px; padding-top:26px; border-top:2px solid var(--line); }
+      .stage-no { flex:0 0 auto; width:46px; height:46px; border-radius:13px; background:var(--accent); color:#fff;
+                  font-size:1.4rem; font-weight:800; display:flex; align-items:center; justify-content:center; }
+      .stage.appendix .stage-no { background:var(--muted); }
+      .stage-body { min-width:0; }
+      .stage-kicker { font-size:.7rem; font-weight:800; letter-spacing:.09em; color:var(--muted); margin:0 0 3px; }
+      .stage-title { font-size:1.45rem; margin:0 0 7px; letter-spacing:-.01em; }
+      .stage-know { margin:0 0 8px; font-size:1.02rem; }
+      .stage-meta { margin:0; display:flex; flex-wrap:wrap; gap:7px; }
+      .stage-meta span { font-size:.76rem; padding:3px 10px; border-radius:999px; background:#eef1f5; color:var(--muted); }
+      .stage-meta .need { background:#fff4e6; color:#9a5b00; }
+      .stage-meta .need.free { background:#eafaf0; color:#1a7a42; }
+      /* ---- per-section outcome line ---- */
+      .outcome { margin:2px 0 14px; padding:8px 13px; border-left:3px solid #b9c6d6; background:#f6f8fb;
+                 border-radius:0 8px 8px 0; font-size:.93rem; color:#3b4756; }
+      .outcome span { display:block; font-size:.68rem; font-weight:800; letter-spacing:.07em;
+                      text-transform:uppercase; color:var(--muted); margin-bottom:1px; }
+      /* ---- end-of-stage checkpoint ---- */
+      .check { border:1px solid #cfe0ff; background:#f7faff; border-radius:12px; padding:16px 18px; margin:26px 0 8px; }
+      .check-title { font-size:.72rem; font-weight:800; letter-spacing:.07em; text-transform:uppercase;
+                     color:var(--accent); margin:0 0 6px; }
+      .check-lead { margin:0 0 10px; font-size:.92rem; color:var(--muted); }
+      .check details { border-top:1px solid #dce7f7; padding:9px 0 3px; }
+      .check details:first-of-type { border-top:none; }
+      .check summary { cursor:pointer; font-weight:600; font-size:.96rem; }
+      .check summary:hover { color:var(--accent); }
+      .check details p { margin:7px 0 4px; font-size:.93rem; color:#3b4756; }
+      .callout.stopper { background:#fff7e6; border-color:#ffe1a8; }
+      .toc-group { font-size:.68rem; font-weight:800; letter-spacing:.07em; text-transform:uppercase;
+                   color:var(--muted); margin:14px 0 4px; padding-left:12px; }
       /* incident retrospective (START) */
       .star { border-left:3px solid #0b7285; padding:2px 0 2px 15px; margin:22px 0; }
       .star > h3 { margin:0 0 6px; font-size:1.1rem; display:flex; align-items:center; gap:10px; }
@@ -117,18 +157,24 @@
     <nav class="toc" aria-label="Table of contents">
       <p class="toc-title">On this page</p>
       <ol>
-        <li><a href="#live">● Live status</a></li>
-        <li><a href="#s10">10 seconds — the whole thing</a></li>
-        <li><a href="#s1m">1 minute — one request</a></li>
-        <li><a href="#s5m">5 minutes — the parts</a></li>
+        <li class="toc-group">Stage 1 · Start here</li>
+        <li><a href="#live">Is it up right now?</a></li>
+        <li><a href="#s10">The whole thing in one sentence</a></li>
+        <li><a href="#s1m">One request, end to end</a></li>
+        <li class="toc-group">Stage 2 · The parts, named</li>
+        <li><a href="#s5m">The parts, named</a></li>
+        <li class="toc-group">Stage 3 · Running it</li>
         <li><a href="#deploy">How code gets here</a></li>
-        <li><a href="#config">Where settings live</a></li>
+        <li><a href="#retro">When it breaks: a real outage</a></li>
+        <li class="toc-group">Stage 4 · Where the truth lives</li>
+        <li><a href="#config">Is it all in git?</a></li>
         <li><a href="#paths">Every config path</a></li>
-        <li><a href="#gitops">ArgoCD &amp; GitOps</a></li>
-        <li><a href="#grow">What to grow</a></li>
-        <li><a href="#retro">Case study: an outage</a></li>
+        <li class="toc-group">Stage 5 · What comes next</li>
+        <li><a href="#gitops">GitOps &amp; ArgoCD</a></li>
+        <li><a href="#grow">What to grow next</a></li>
+        <li class="toc-group">Appendix</li>
+        <li><a href="#s1h">Add a site yourself</a></li>
         <li><a href="#glossary">Every term explained</a></li>
-        <li><a href="#s1h">1 hour — go deeper</a></li>
       </ol>
     </nav>
     <div class="wrap">
@@ -137,27 +183,35 @@
         <h1>How the servers run — from the URL you type to the page you see</h1>
         <p class="tldr muted">
           One small server hosts every <code>bit-habit.com</code> website. This page explains how,
-          in layers: read the first line in 10 seconds, or keep going for an hour. Stop whenever you
-          know enough.
+          in <strong>five stages that get harder in order</strong> — each one starts by telling you
+          what you will be able to say when you finish it, and ends with a few questions to check
+          yourself. <mark>Stage 1 assumes you know nothing at all.</mark> Stop at whatever stage
+          answers your question; nothing later is a prerequisite for using the sites.
         </p>
-        <div class="depthnav">
-          <a href="#s10">⏱ 10 seconds</a>
-          <a href="#s1m">⏱ 1 minute</a>
-          <a href="#s5m">⏱ 5 minutes</a>
-          <a href="#deploy">↑ How code gets here</a>
-          <a href="#config">🗂 Where configs live</a>
-          <a href="#paths">📁 Every path</a>
-          <a href="#gitops">🔄 ArgoCD / GitOps</a>
-          <a href="#grow">📈 What to grow</a>
-          <a href="#retro">🔎 Case study: an outage</a>
-          <a href="#glossary">📖 Every term explained</a>
-          <a href="#s1h">⏱ 1 hour</a>
+        <div class="ladder">
+          <a class="rung" href="#stage1"><b>Stage 1</b><span>Start here</span><em>about 2 minutes</em></a>
+          <a class="rung" href="#stage2"><b>Stage 2</b><span>The parts, named</span><em>about 5 minutes</em></a>
+          <a class="rung" href="#stage3"><b>Stage 3</b><span>Running it</span><em>about 15 minutes</em></a>
+          <a class="rung" href="#stage4"><b>Stage 4</b><span>Where the truth lives</span><em>about 15 minutes</em></a>
+          <a class="rung" href="#stage5"><b>Stage 5</b><span>What comes next</span><em>about 15 minutes</em></a>
+          <a class="rung ref" href="#stageA"><b>Appendix</b><span>Look things up</span><em>reference</em></a>
         </div>
         <p><a class="btn" href="#live">● See what's up right now</a></p>
       </header>
 
+
+      <div class="stage" id="stage1">
+        <div class="stage-no">1</div>
+        <div class="stage-body">
+          <p class="stage-kicker">NO PRIOR KNOWLEDGE NEEDED</p>
+          <h2 class="stage-title">Stage 1 · Start here</h2>
+          <p class="stage-know">What this platform is, and the complete path a request takes from your browser to the page you see.</p>
+          <p class="stage-meta"><span class="time">about 2 minutes</span><span class="need free">start from zero</span></p>
+        </div>
+      </div>
       <section id="live">
         <h2><span class="badge">LIVE</span>Is everything up right now?</h2>
+        <p class="outcome"><span>After this you can say</span> which sites are up right now, and which one is not.</p>
         <p class="muted statusnote">
           Each site is checked from the outside every 60 seconds.
           Full status page → <a href="https://status.bit-habit.com" target="_blank" rel="noopener">status.bit-habit.com</a>.
@@ -165,9 +219,9 @@
         <p id="statussummary" class="summary muted">Loading live status…</p>
         <div id="statusgrid"></div>
       </section>
-
       <section id="s10">
         <h2><span class="badge">10 SECONDS</span>The whole thing in one sentence</h2>
+        <p class="outcome"><span>After this you can say</span> what this entire platform is, in one sentence.</p>
         <p class="tldr">
           <mark>One small server runs every <code>bit-habit.com</code> website.</mark> You type an address,
           it finds the right app, and sends the page back.
@@ -182,9 +236,9 @@ flowchart LR
         </div>
         <p class="muted">Want to know how it picks "the right app"? Keep reading.</p>
       </section>
-
       <section id="s1m">
         <h2><span class="badge">1 MINUTE</span>What happens when you open <code>startpage.bit-habit.com</code></h2>
+        <p class="outcome"><span>After this you can say</span> every step between typing an address and seeing a page.</p>
         <p class="tldr">Follow one request from your browser to the page. Six steps.</p>
         <ol>
           <li><strong>Find the server.</strong> Your browser asks DNS "where is this address?" Every
@@ -209,8 +263,36 @@ flowchart TB
         </div>
       </section>
 
+      <div class="check">
+        <p class="check-title">Checkpoint · end of Stage 1</p>
+        <p class="check-lead">Answer these before moving on. Open each one to check
+          yourself — if any answer is a surprise, that part is worth a re-read.</p>
+          <details>
+            <summary>Every <code>*.bit-habit.com</code> address points at how many servers?</summary>
+            <p>One. A single Oracle Cloud box runs all ~20 sites, and wildcard DNS sends every name to its one IP.</p>
+          </details>
+          <details>
+            <summary>Which program receives your request first?</summary>
+            <p>Traefik. It holds ports 80 and 443 on the host and is the only thing listening on them.</p>
+          </details>
+          <details>
+            <summary>You typed <code>http://</code> instead of <code>https://</code>. What happens?</summary>
+            <p>Traefik answers with a permanent redirect (status 308) to the https address, then serves the page over the encrypted connection.</p>
+          </details>
+      </div>
+
+      <div class="stage" id="stage2">
+        <div class="stage-no">2</div>
+        <div class="stage-body">
+          <p class="stage-kicker">THE VOCABULARY</p>
+          <h2 class="stage-title">Stage 2 · The parts, named</h2>
+          <p class="stage-know">The name of every moving part — Traefik, Ingress, Service, Pod, cert-manager, k3s — and what each one is for.</p>
+          <p class="stage-meta"><span class="time">about 5 minutes</span><span class="need">needs Stage 1</span></p>
+        </div>
+      </div>
       <section id="s5m">
         <h2><span class="badge">5 MINUTES</span>The parts, named — and what's running</h2>
+        <p class="outcome"><span>After this you can say</span> the name of each moving part, and what each one does.</p>
         <p class="tldr">
           The server runs <strong>k3s</strong>, a small version of Kubernetes. Kubernetes is just a
           manager that starts apps, restarts them if they crash, and routes traffic to them. Here are
@@ -274,8 +356,44 @@ flowchart TB
         </div>
       </section>
 
+      <div class="check">
+        <p class="check-title">Checkpoint · end of Stage 2</p>
+        <p class="check-lead">Answer these before moving on. Open each one to check
+          yourself — if any answer is a surprise, that part is worth a re-read.</p>
+          <details>
+            <summary>A Pod crashes, restarts, and comes back with a different IP address. What did <em>not</em> change?</summary>
+            <p>The Service. That is the entire point of a Service: it is a stable name in front of Pods that come and go.</p>
+          </details>
+          <details>
+            <summary>Which part decides that <code>wiki.bit-habit.com</code> should reach <code>wikijs-svc</code>?</summary>
+            <p>The Ingress — it is the routing rule. Traefik is the program that reads it and acts on it. Rule and reader are two different things.</p>
+          </details>
+          <details>
+            <summary>Who renews the HTTPS certificate before it expires?</summary>
+            <p>cert-manager, automatically. One wildcard certificate for <code>*.bit-habit.com</code> covers every subdomain, so a new site needs no certificate work at all.</p>
+          </details>
+      </div>
+
+      <div class="callout stopper">
+        <strong>🛑 You can stop here.</strong> If you came to understand how a
+        <code>bit-habit.com</code> page reaches your browser, Stages 1 and 2 are the whole
+        answer — you now know every part in the path and what each one does. Everything
+        below is about <em>running and changing</em> the platform, which is a different job.
+        Come back to it when you need it.
+      </div>
+
+      <div class="stage" id="stage3">
+        <div class="stage-no">3</div>
+        <div class="stage-body">
+          <p class="stage-kicker">OPERATIONS</p>
+          <h2 class="stage-title">Stage 3 · Running it</h2>
+          <p class="stage-know">How your code actually gets onto the server, and what it looks like — and how you diagnose it — when something breaks.</p>
+          <p class="stage-meta"><span class="time">about 15 minutes</span><span class="need">needs Stage 2</span></p>
+        </div>
+      </div>
       <section id="deploy">
         <h2><span class="badge">DEPLOYS</span>The other direction — how the code <em>gets</em> here</h2>
+        <p class="outcome"><span>After this you can say</span> how code travels from your laptop to a live site — and why Kubernetes plays no part in noticing your push.</p>
         <p class="tldr">
           Everything above follows a request <em>inward</em>: browser → Traefik → app. This section
           follows code <em>outward</em>: laptop → GitHub → server → live. It is the half of the
@@ -374,377 +492,9 @@ flowchart TB
           reached here with one extra line and nothing new installed.
         </div>
       </section>
-
-      <section id="config">
-        <h2><span class="badge today">TODAY</span>Where every setting actually lives</h2>
-        <p class="tldr">
-          A fair question to ask of any platform: <strong>is the whole thing in one git repo?</strong>
-          Almost. <mark>Every service that matters is in git — either this repo, or its own.</mark>
-          What is left over is small, and worth naming precisely rather than worrying about.
-        </p>
-
-        <div class="mermaid">
-flowchart TB
-    subgraph ONE["bit-habit-infra — the infra repo"]
-      EDGE["Edge + TLS + routing\nTraefik · cert-manager · ingress.yaml"]
-      APPS["17 app manifests\nghost · wikijs · gatus · sentinel · llm-app-lab · …"]
-    end
-    subgraph SELF["The app's own repo — a normal pattern"]
-      PS["physical-spark\nk8s/ + deploy.sh"]
-      QF["quali-fit\nk8s/ in KIBA-Automation/quali-fit"]
-    end
-    subgraph OFF["Off-the-shelf apps — a few YAML files on the server"]
-      PLANE["plane · makeplane/plane"]
-      FIDER["fider · getfider/fider"]
-    end
-    K["k3s cluster\n(the running truth)"]
-    ONE ==>|"kubectl apply, by hand"| K
-    SELF -->|"its own deploy script"| K
-    OFF -.->|"applied by hand, rarely"| K
-        </div>
-
-        <div class="callout good">
-          ✅ <strong>Everything with a blast radius is in git.</strong> The parts that could take
-          <em>every</em> site down at once — the edge (Traefik), TLS (the wildcard cert), and the routing
-          table (<code>base/ingress.yaml</code>) — plus 17 app manifests live in
-          <code>bit-habit-infra</code>. Two apps keep their manifests in their own repo alongside their
-          code (<code>physical-spark</code>, <code>quali-fit</code>), which is a perfectly standard
-          layout, not a gap. <mark>Nothing that matters exists only on this disk.</mark>
-        </div>
-
-        <div class="callout warn">
-          ⚠️ <strong>The leftovers, named honestly.</strong> <code>plane</code> and <code>fider</code>
-          are <em>off-the-shelf</em> apps — stock images (<code>makeplane/plane</code>,
-          <code>getfider/fider</code>) driven by a couple of hand-written YAML files that sit in a home
-          directory and are in no repo. They are also barely used. Losing those files would mean
-          rewriting a Deployment and a Service from a public project's docs — an hour, not a disaster.
-          <mark>Worth tidying eventually; not worth calling a risk.</mark>
-        </div>
-
-        <p class="tldr" style="margin-top:26px"><strong>The cluster, right now</strong></p>
-        <div class="inv">
-          <div class="n"><b>1</b><span>node · OCI Ampere A1 (ARM)</span></div>
-          <div class="n"><b>9</b><span>namespaces</span></div>
-          <div class="n"><b>~40</b><span>Deployments</span></div>
-          <div class="n"><b>14</b><span>Ingress routes</span></div>
-          <div class="n"><b>1</b><span>wildcard TLS cert</span></div>
-          <div class="n"><b>$0</b><span>per month</span></div>
-        </div>
-
-        <div class="concept">
-          <span class="tag">the industry standard — and where this sits</span>
-          <p style="margin:0 0 8px">
-            The standard goal is one line: <mark>the running cluster equals what git says</mark>, with
-            nothing that exists only on one machine. GitOps tools —
-            <strong>ArgoCD</strong> or <strong>Flux</strong> — enforce it by continuously watching a repo
-            and re-applying it, so manual cluster edits are reverted automatically.
-          </p>
-          <p style="margin:0">
-            For one node run by one person, ArgoCD is <em>deliberately not installed</em>
-            (<a href="https://github.com/bookseal/bit-habit-infra/tree/main/apps/argocd" target="_blank" rel="noopener">kept only as reference</a>):
-            it adds more moving parts than it removes, and re-applying manifests on every deploy already
-            buys the self-healing that makes GitOps worth having. Measured against the standard, this
-            platform is closer than it looks — <mark>the remaining gap is secrets, not services.</mark>
-            See <a href="#grow">what to grow</a>.
-          </p>
-        </div>
-      </section>
-
-      <section id="paths">
-        <h2><span class="badge paths">PATHS</span>Every config, and exactly where it lives</h2>
-        <p class="tldr">
-          "Where is that configured?" is the question you actually ask at 2am. There are
-          <mark>three places a setting can live here</mark>, and only one of them is this git repo.
-          Here is all three, with real paths.
-        </p>
-
-        <div class="mermaid">
-flowchart TB
-    R["1 · This git repo\nbit-habit-infra"]
-    A["2 · An app's own git repo\nphysical-spark · quali-fit"]
-    H["3 · The host, outside any repo\nk3s's own directories"]
-    K["k3s cluster"]
-    R -->|"kubectl apply, by hand"| K
-    A -->|"its own deploy script"| K
-    H -->|"k3s auto-applies this folder"| K
-        </div>
-
-        <p class="tldr" style="margin-top:26px"><strong>1 · In this git repo</strong></p>
-        <p class="muted">
-          On GitHub as
-          <a href="https://github.com/bookseal/bit-habit-infra" target="_blank" rel="noopener">bookseal/bit-habit-infra</a>,
-          checked out on the server at <code class="path">/home/ubuntu/workspace/bit-habit-infra</code>.
-        </p>
-        <div class="concept">
-          <table>
-            <thead><tr><th>Path</th><th>What it defines</th></tr></thead>
-            <tbody>
-              <tr><td><code class="path">base/ingress.yaml</code></td><td>the routing table — every subdomain → its Service. <strong>The one file that can break every site at once.</strong></td></tr>
-              <tr><td><code class="path">base/cert-manager/cluster-issuer.yaml</code></td><td>how TLS certificates get issued (Let's Encrypt, DNS-01 via Route53)</td></tr>
-              <tr><td><code class="path">base/cert-manager/certificate.yaml</code></td><td>the wildcard <code>*.bit-habit.com</code> certificate request</td></tr>
-              <tr><td><code class="path">base/cert-manager/aws-secret.example.yaml</code></td><td>a <em>redacted template</em>. The real one (Route53 keys) is gitignored and applied by hand</td></tr>
-              <tr><td><code class="path">base/middlewares/</code></td><td>Traefik middlewares, e.g. strip the <code>/api</code> prefix before forwarding</td></tr>
-              <tr><td><code class="path">apps/&lt;name&gt;/deployment.yaml</code></td><td>one folder per service — 17 of them (ghost, wikijs, gatus, sentinel, llm-app-lab, …)</td></tr>
-              <tr><td><code class="path">apps/argocd/application.yaml</code></td><td>GitOps config, <strong>written but never installed</strong> — see the next section</td></tr>
-              <tr><td><code class="path">k3s-bootstrap/traefik-config.yaml</code></td><td>the edge — Traefik on host ports 80/443, http→https redirect</td></tr>
-              <tr><td><code class="path">docs/index.html</code></td><td>this page. nginx serves this folder straight off the disk</td></tr>
-            </tbody>
-          </table>
-        </div>
-
-        <p class="tldr" style="margin-top:26px"><strong>2 · In the app's own git repo</strong></p>
-        <p class="muted">
-          Two services keep their Kubernetes manifests next to their code, and deploy themselves.
-          This is a normal, defensible layout — the service stays self-contained, at the cost of this
-          repo no longer being the complete picture.
-        </p>
-        <div class="concept">
-          <table>
-            <thead><tr><th>Service</th><th>Repo · path</th></tr></thead>
-            <tbody>
-              <tr>
-                <td><code>physical-spark</code></td>
-                <td><a href="https://github.com/bookseal/physical-spark" target="_blank" rel="noopener">bookseal/physical-spark</a>
-                  → <code class="path">k8s/</code>, <code class="path">auth/k8s/</code>, applied by its own
-                  <code class="path">ops/deploy.sh</code>. It even brings its own Ingress.</td>
-              </tr>
-              <tr>
-                <td><code>quali-fit</code></td>
-                <td><a href="https://github.com/KIBA-Automation/quali-fit" target="_blank" rel="noopener">KIBA-Automation/quali-fit</a>
-                  → <code class="path">k8s/</code> (namespace, PVC, deployment, service, middleware, ingress).
-                  The image is tagged with the git commit it was built from, so a running Pod always names
-                  its own source.</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-
-        <p class="tldr" style="margin-top:26px"><strong>3 · On the host — k3s's own directories</strong></p>
-        <p class="muted">These are not in the repo, and mostly cannot be. They belong to k3s itself.</p>
-        <div class="concept">
-          <table>
-            <thead><tr><th>Path</th><th>What it is</th></tr></thead>
-            <tbody>
-              <tr>
-                <td><code class="path">/var/lib/rancher/k3s/server/manifests/</code></td>
-                <td><mark>A magic folder: k3s applies every YAML you drop in here, automatically.</mark>
-                  It holds Traefik, CoreDNS, local-storage — and <code class="path">traefik-config.yaml</code>,
-                  a copy of the repo's file. To change the edge you
-                  <code>sudo cp</code> the file here and k3s redeploys Traefik on its own.
-                  <strong>This is a second source of truth, and ArgoCD can never manage it.</strong></td>
-              </tr>
-              <tr><td><code class="path">/etc/rancher/k3s/k3s.yaml</code></td><td>the admin <em>kubeconfig</em> — the credentials + address <code>kubectl</code> uses to talk to the cluster. Root-only.</td></tr>
-              <tr><td><code class="path">/etc/rancher/k3s/registries.yaml</code></td><td>where to pull container images from</td></tr>
-              <tr><td><code class="path">~/.kube/config</code></td><td>the same kubeconfig, copied for a normal user</td></tr>
-              <tr><td><code class="path">~/.ssh/authorized_keys</code></td><td>the deploy keys GitHub Actions uses, each pinned to <em>one</em> script (see the deploys section)</td></tr>
-            </tbody>
-          </table>
-        </div>
-
-        <p class="tldr" style="margin-top:26px"><strong>And the leftovers</strong></p>
-        <div class="callout warn">
-          ⚠️ <strong>Two off-the-shelf apps are driven by YAML that lives in no repo.</strong>
-          <code class="path">/home/ubuntu/plane/k8s/</code> and
-          <code class="path">/home/ubuntu/fider/fider.yaml</code> deploy stock upstream images
-          (<code>makeplane/plane</code>, <code>getfider/fider</code>) — a Deployment, a Service, a
-          Postgres. Nothing bespoke, nothing precious, and both are barely used.
-          <mark>Recreating them from the upstream docs is an hour of work, so this is a tidiness item,
-          not a risk.</mark> The <em>real</em> thing still outside git is secrets — see
-          <a href="#grow">what to grow</a>.
-        </div>
-      </section>
-
-      <section id="gitops">
-        <h2><span class="badge gitops">GITOPS</span>ArgoCD — the idea, and what it would actually take</h2>
-        <p class="tldr">
-          GitOps is one idea in one sentence: <mark>put the desired state in git, and let a program
-          inside the cluster continuously make reality match it.</mark> That's it. ArgoCD is the most
-          common program for doing that. Here is what changes, and what it would cost here.
-        </p>
-
-        <p class="tldr" style="margin-top:22px"><strong>The one thing that changes: push becomes pull</strong></p>
-        <p class="muted">
-          Today, everything <em>pushes into</em> the cluster from outside — GitHub Actions SSHes in, or
-          a human runs <code>kubectl apply</code>. The cluster is passive; it never looks at git.
-          GitOps inverts that: a controller runs <em>inside</em> the cluster and pulls from git forever.
-        </p>
-        <div class="mermaid">
-flowchart TB
-    subgraph PUSH["Today — push model"]
-      GH["Git (GitHub)"] --> ACT["GitHub Actions,\nor you at a terminal"]
-      ACT ==>|"pushes changes in"| K1["k3s cluster\n(passive — never reads git)"]
-    end
-    subgraph PULL["GitOps — pull model"]
-      AGO["ArgoCD controller\nrunning inside the cluster"] -->|"reads the repo\nevery ~3 minutes"| GH2["Git (GitHub)"]
-      AGO ==>|"makes the cluster match git\nforever"| K2["k3s cluster"]
-      K2 -->|"someone edited by hand?\nthat's drift"| AGO
-    end
-        </div>
-
-        <p class="tldr" style="margin-top:26px"><strong>The loop, precisely</strong></p>
-        <div class="mermaid">
-flowchart LR
-    G["Git repo\nbase/ and apps/\n= desired state"] --> C["Compare"]
-    L["Live cluster\n= actual state"] --> C
-    C -->|"identical"| OK["Synced. Do nothing."]
-    C -->|"different"| S["OutOfSync.\nApply the difference."]
-    S --> L
-        </div>
-
-        <div class="concept">
-          <span class="tag">the vocabulary you need — and nothing more</span>
-          <table>
-            <thead><tr><th>Word</th><th>What it means</th></tr></thead>
-            <tbody>
-              <tr><td><strong>Application</strong></td><td>ArgoCD's core config object. It says: "watch <em>this path</em> in <em>this repo</em>, and keep <em>this namespace</em> matching it." One per group of manifests. Already written here: <code class="path">apps/argocd/application.yaml</code>.</td></tr>
-              <tr><td><strong>Sync</strong></td><td>The act of applying git to the cluster. Can be automatic or a button you press.</td></tr>
-              <tr><td><strong>Synced / OutOfSync</strong></td><td>Does the cluster currently match git? OutOfSync means someone changed one side.</td></tr>
-              <tr><td><strong>Healthy / Degraded</strong></td><td>A <em>separate</em> question: are the Pods actually running? You can be Synced and Degraded — git applied fine, but the app is crashing.</td></tr>
-              <tr><td><strong>Drift</strong></td><td>The cluster no longer matches git. Usually because a human ran <code>kubectl edit</code> at 2am.</td></tr>
-              <tr><td><strong>selfHeal</strong></td><td>Automatically undo that 2am edit — re-apply git over it. <mark>This is the property people actually want from GitOps.</mark></td></tr>
-              <tr><td><strong>prune</strong></td><td>Delete things from the cluster when they're deleted from git. Powerful and dangerous: a bad file deletion becomes a production deletion. Off (<code>prune: false</code>) in this repo's config.</td></tr>
-              <tr><td><strong>app-of-apps</strong></td><td>One Application whose job is to create the other Applications. Adding a new service becomes "add one file", not "click around the UI".</td></tr>
-            </tbody>
-          </table>
-        </div>
-
-        <p class="tldr" style="margin-top:26px"><strong>What installing it actually looks like</strong></p>
-        <p class="muted">Five commands. The wildcard DNS and certificate already cover a new subdomain, so the UI is reachable with no DNS or TLS work.</p>
-
-        <div class="callout good">
-          🧑‍🏫 <strong>Want to actually do it?</strong> There is a hands-on, step-by-step walkthrough of
-          this exact install — with the cluster's quirks baked in, quizzes, and a progress checklist:
-          <a href="argocd-tutorial.html"><strong>ArgoCD 설치 튜토리얼 (한국어)</strong></a>.
-        </div>
-
-        <pre><code># 1. a namespace to live in
-kubectl create namespace argocd
-
-# 2. install ArgoCD itself (one big official manifest)
-kubectl apply -n argocd -f \
-  https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
-
-# 3. let Traefik handle TLS, so ArgoCD serves plain http internally
-kubectl -n argocd patch deployment argocd-server --type json \
-  -p '[{"op":"add","path":"/spec/template/spec/containers/0/args/-","value":"--insecure"}]'
-
-# 4. route argocd.bit-habit.com to it (wildcard cert already covers this name)
-kubectl apply -f apps/argocd/ingress.yaml
-
-# 5. tell ArgoCD which repo and paths to watch — this file already exists
-kubectl apply -f apps/argocd/application.yaml</code></pre>
-
-        <p class="muted">Step 5 is the whole idea, and it is already written in this repo:</p>
-        <pre><code>spec:
-  source:
-    repoURL: https://github.com/bookseal/bit-habit-infra.git
-    targetRevision: main        # watch the main branch
-    path: base                  # watch this folder
-  syncPolicy:
-    automated:
-      prune: false              # do NOT delete things removed from git (safety)
-      selfHeal: true            # DO undo hand-edits made in the cluster</code></pre>
-
-        <div class="callout">
-          🤔 <strong>Why it is still not installed.</strong> Re-applying manifests on every deploy
-          already buys <code>selfHeal</code>, which is the valuable half — and it costs nothing to run.
-          ArgoCD adds ~5 Pods (controller, repo-server, api-server, redis, dex) to a free-tier ARM box,
-          plus one more web UI to lock down. For one node run by one person, that trade is honestly close.
-          <mark>The real argument for adopting it is not the tool — it's that the tool forces
-          everything into git.</mark> You can get that benefit first, and for free, without installing anything.
-        </div>
-      </section>
-
-      <section id="grow">
-        <h2><span class="badge grow">THE GAP</span>What to grow, in order</h2>
-        <p class="tldr">
-          Honest scorecard: what this platform would need before GitOps is even <em>possible</em>,
-          ranked by what actually matters. <mark>There is exactly one real blocker, and it is not
-          the services — it is the secrets.</mark>
-        </p>
-
-        <div class="gap now">
-          <h4><span class="prio p1">THE ONE BLOCKER</span> &nbsp;Decide how secrets get into git</h4>
-          <p><strong>Today:</strong> real secrets are gitignored and applied by hand — the Route53 keys,
-            quali-fit's basic-auth, oauth2-proxy's client secret. Git holds only redacted
-            <code>*.example.yaml</code> templates.</p>
-          <p><strong>Why it blocks GitOps:</strong> a controller that syncs "everything in git" cannot sync
-            what is deliberately absent from git. You would keep a manual step forever, and every fresh
-            install would silently come up broken.</p>
-          <p><strong>The options,</strong> cheapest first:</p>
-          <ul>
-            <li><strong>Sealed Secrets</strong> — encrypt a Secret with a key only this cluster holds; the
-              encrypted file is safe to commit. Simplest thing that works for one cluster.</li>
-            <li><strong>SOPS + age</strong> — encrypt files with a key you keep; works without any
-              cluster-side operator, but ArgoCD needs a plugin to decrypt.</li>
-            <li><strong>External Secrets</strong> — keep secrets in AWS/Vault and sync them in. Most
-              robust, most moving parts. Overkill here.</li>
-          </ul>
-        </div>
-
-        <div class="gap">
-          <h4><span class="prio p3">TIDYING</span> &nbsp;Commit the two leftover YAML files</h4>
-          <p><strong>Today:</strong> <code>plane</code> and <code>fider</code> are deployed from YAML that
-            sits in a home directory and is in no repo. Both are stock upstream apps, and barely used.</p>
-          <p><strong>Why it is low on this list:</strong> ArgoCD can only sync what is in a repo, so
-            strictly these would have to move before it could manage them. But there is nothing bespoke
-            in them — <mark>losing them costs an hour with the upstream docs, not a service.</mark>
-            Drop them in <code class="path">apps/</code> whenever it is convenient.</p>
-        </div>
-
-        <div class="gap">
-          <h4><span class="prio p2">NEXT</span> &nbsp;Give apps their own namespaces</h4>
-          <p><strong>Today:</strong> almost everything is jammed into the <code>default</code> namespace.
-            Only plane, quali-fit, fider and headlamp have their own.</p>
-          <p><strong>Why it matters:</strong> a <em>namespace</em> is the unit ArgoCD scopes an Application
-            to, and the unit <code>prune</code> deletes within. With one shared <code>default</code>,
-            turning on prune means one controller with permission to delete everything.
-            Namespaces are what make prune safe to ever enable.</p>
-        </div>
-
-        <div class="gap">
-          <h4><span class="prio p2">NEXT</span> &nbsp;Accept that host-level config stays out</h4>
-          <p><code class="path">/var/lib/rancher/k3s/server/manifests/</code> is applied by k3s itself,
-            before and below ArgoCD. Traefik's own configuration will always be a
-            <code>sudo cp</code> onto the host. <strong>That is fine — but it should be written down, not
-            discovered.</strong> Do not chase 100%: aim for "everything that can be in git, is."</p>
-        </div>
-
-        <div class="gap">
-          <h4><span class="prio p3">LATER</span> &nbsp;Then, and only then, consider ArgoCD</h4>
-          <p>With secrets encrypted in git and namespaces per app, installing ArgoCD becomes the five
-            commands above and it just works. Do it in that order and it is a calm afternoon. Do it in
-            the reverse order and you spend a week fighting a controller that keeps trying to sync a
-            repo that does not contain the truth.</p>
-        </div>
-
-        <div class="concept">
-          <span class="tag">the scorecard, at a glance</span>
-          <table class="scorecard">
-            <thead><tr><th>Dimension</th><th>Today</th><th>Needed for GitOps</th></tr></thead>
-            <tbody>
-              <tr><td>Edge, TLS, routing</td><td>✅ in git</td><td>✅ already there</td></tr>
-              <tr><td>Most app manifests</td><td>✅ in git (17 apps)</td><td>✅ already there</td></tr>
-              <tr><td>physical-spark · quali-fit</td><td>✅ in their own git repos</td><td>✅ fine — ArgoCD reads many repos</td></tr>
-              <tr><td>plane · fider</td><td>⚠️ stock apps, YAML in no repo</td><td>commit them — an hour, low stakes</td></tr>
-              <tr><td>Secrets</td><td>❌ <strong>gitignored, applied by hand</strong></td><td>encrypted <em>in</em> git (Sealed Secrets)</td></tr>
-              <tr><td>Namespaces</td><td>⚠️ mostly one shared <code>default</code></td><td>one per app, so prune is safe</td></tr>
-              <tr><td>Self-healing</td><td>✅ <code>kubectl apply</code> on every deploy</td><td>✅ already have the property</td></tr>
-              <tr><td>Host-level (Traefik, CoreDNS)</td><td>manual <code>sudo cp</code></td><td>stays manual — out of scope, by design</td></tr>
-            </tbody>
-          </table>
-        </div>
-
-        <div class="callout good">
-          ✅ <strong>The takeaway.</strong> The gap between here and "industry standard" is not a missing
-          tool, and it is not the services — every service that matters is already in a repo.
-          <mark>It is one thing: secrets are the only part of this platform that git does not know
-          about.</mark> Close that and this is GitOps-ready, whether or not ArgoCD is ever installed.
-        </div>
-      </section>
-
       <section id="retro">
         <h2><span class="badge retro">CASE STUDY</span>The day habit.bit-habit.com served the wrong website</h2>
+        <p class="outcome"><span>After this you can say</span> how to diagnose an outage one layer at a time, and why a <code>200 OK</code> can be a lie.</p>
         <p class="tldr">
           A real outage on this cluster, written up with <strong>START</strong> — Situation, Task,
           Action, Result, Takeaway. <mark>The site answered <code>200 OK</code> the entire time, which
@@ -993,6 +743,538 @@ sudo k3s kubectl exec deploy/static-web -- cat /etc/nginx/conf.d/default.conf</c
         </div>
       </section>
 
+      <div class="check">
+        <p class="check-title">Checkpoint · end of Stage 3</p>
+        <p class="check-lead">Answer these before moving on. Open each one to check
+          yourself — if any answer is a surprise, that part is worth a re-read.</p>
+          <details>
+            <summary>You push to <code>main</code>. Does Kubernetes notice?</summary>
+            <p>No — and this trips up almost everyone. Kubernetes never watches GitHub. GitHub Actions SSHes into the server and pulls, and only then is anything new.</p>
+          </details>
+          <details>
+            <summary>A site returns <code>200 OK</code> but shows the wrong content. Is it broken?</summary>
+            <p>Yes. <code>200</code> only means the server answered — not that it answered correctly. This is exactly the outage in the case study, and it hid for months because every monitor was satisfied.</p>
+          </details>
+          <details>
+            <summary>You fix a bad route with <code>kubectl patch</code> and the site works again. Are you done?</summary>
+            <p>No. The file that produced the bad route is still wrong, so the next <code>kubectl apply</code> silently undoes your fix. Fix the file, not just the cluster.</p>
+          </details>
+      </div>
+
+      <div class="stage" id="stage4">
+        <div class="stage-no">4</div>
+        <div class="stage-body">
+          <p class="stage-kicker">CONFIGURATION</p>
+          <h2 class="stage-title">Stage 4 · Where the truth lives</h2>
+          <p class="stage-know">Which file defines what, which of them are in git, and which single file can take every site down at once.</p>
+          <p class="stage-meta"><span class="time">about 15 minutes</span><span class="need">needs Stage 3</span></p>
+        </div>
+      </div>
+      <section id="config">
+        <h2><span class="badge today">TODAY</span>Where every setting actually lives</h2>
+        <p class="outcome"><span>After this you can say</span> whether this platform is really “all in git”, and exactly what is not.</p>
+        <p class="tldr">
+          A fair question to ask of any platform: <strong>is the whole thing in one git repo?</strong>
+          Almost. <mark>Every service that matters is in git — either this repo, or its own.</mark>
+          What is left over is small, and worth naming precisely rather than worrying about.
+        </p>
+
+        <div class="mermaid">
+flowchart TB
+    subgraph ONE["bit-habit-infra — the infra repo"]
+      EDGE["Edge + TLS + routing\nTraefik · cert-manager · ingress.yaml"]
+      APPS["17 app manifests\nghost · wikijs · gatus · sentinel · llm-app-lab · …"]
+    end
+    subgraph SELF["The app's own repo — a normal pattern"]
+      PS["physical-spark\nk8s/ + deploy.sh"]
+      QF["quali-fit\nk8s/ in KIBA-Automation/quali-fit"]
+    end
+    subgraph OFF["Off-the-shelf apps — a few YAML files on the server"]
+      PLANE["plane · makeplane/plane"]
+      FIDER["fider · getfider/fider"]
+    end
+    K["k3s cluster\n(the running truth)"]
+    ONE ==>|"kubectl apply, by hand"| K
+    SELF -->|"its own deploy script"| K
+    OFF -.->|"applied by hand, rarely"| K
+        </div>
+
+        <div class="callout good">
+          ✅ <strong>Everything with a blast radius is in git.</strong> The parts that could take
+          <em>every</em> site down at once — the edge (Traefik), TLS (the wildcard cert), and the routing
+          table (<code>base/ingress.yaml</code>) — plus 17 app manifests live in
+          <code>bit-habit-infra</code>. Two apps keep their manifests in their own repo alongside their
+          code (<code>physical-spark</code>, <code>quali-fit</code>), which is a perfectly standard
+          layout, not a gap. <mark>Nothing that matters exists only on this disk.</mark>
+        </div>
+
+        <div class="callout warn">
+          ⚠️ <strong>The leftovers, named honestly.</strong> <code>plane</code> and <code>fider</code>
+          are <em>off-the-shelf</em> apps — stock images (<code>makeplane/plane</code>,
+          <code>getfider/fider</code>) driven by a couple of hand-written YAML files that sit in a home
+          directory and are in no repo. They are also barely used. Losing those files would mean
+          rewriting a Deployment and a Service from a public project's docs — an hour, not a disaster.
+          <mark>Worth tidying eventually; not worth calling a risk.</mark>
+        </div>
+
+        <p class="tldr" style="margin-top:26px"><strong>The cluster, right now</strong></p>
+        <div class="inv">
+          <div class="n"><b>1</b><span>node · OCI Ampere A1 (ARM)</span></div>
+          <div class="n"><b>9</b><span>namespaces</span></div>
+          <div class="n"><b>~40</b><span>Deployments</span></div>
+          <div class="n"><b>14</b><span>Ingress routes</span></div>
+          <div class="n"><b>1</b><span>wildcard TLS cert</span></div>
+          <div class="n"><b>$0</b><span>per month</span></div>
+        </div>
+
+        <div class="concept">
+          <span class="tag">the industry standard — and where this sits</span>
+          <p style="margin:0 0 8px">
+            The standard goal is one line: <mark>the running cluster equals what git says</mark>, with
+            nothing that exists only on one machine. GitOps tools —
+            <strong>ArgoCD</strong> or <strong>Flux</strong> — enforce it by continuously watching a repo
+            and re-applying it, so manual cluster edits are reverted automatically.
+          </p>
+          <p style="margin:0">
+            For one node run by one person, ArgoCD is <em>deliberately not installed</em>
+            (<a href="https://github.com/bookseal/bit-habit-infra/tree/main/apps/argocd" target="_blank" rel="noopener">kept only as reference</a>):
+            it adds more moving parts than it removes, and re-applying manifests on every deploy already
+            buys the self-healing that makes GitOps worth having. Measured against the standard, this
+            platform is closer than it looks — <mark>the remaining gap is secrets, not services.</mark>
+            See <a href="#grow">what to grow</a>.
+          </p>
+        </div>
+      </section>
+      <section id="paths">
+        <h2><span class="badge paths">PATHS</span>Every config, and exactly where it lives</h2>
+        <p class="outcome"><span>After this you can say</span> which file to open for any setting on this server.</p>
+        <p class="tldr">
+          "Where is that configured?" is the question you actually ask at 2am. There are
+          <mark>three places a setting can live here</mark>, and only one of them is this git repo.
+          Here is all three, with real paths.
+        </p>
+
+        <div class="mermaid">
+flowchart TB
+    R["1 · This git repo\nbit-habit-infra"]
+    A["2 · An app's own git repo\nphysical-spark · quali-fit"]
+    H["3 · The host, outside any repo\nk3s's own directories"]
+    K["k3s cluster"]
+    R -->|"kubectl apply, by hand"| K
+    A -->|"its own deploy script"| K
+    H -->|"k3s auto-applies this folder"| K
+        </div>
+
+        <p class="tldr" style="margin-top:26px"><strong>1 · In this git repo</strong></p>
+        <p class="muted">
+          On GitHub as
+          <a href="https://github.com/bookseal/bit-habit-infra" target="_blank" rel="noopener">bookseal/bit-habit-infra</a>,
+          checked out on the server at <code class="path">/home/ubuntu/workspace/bit-habit-infra</code>.
+        </p>
+        <div class="concept">
+          <table>
+            <thead><tr><th>Path</th><th>What it defines</th></tr></thead>
+            <tbody>
+              <tr><td><code class="path">base/ingress.yaml</code></td><td>the routing table — every subdomain → its Service. <strong>The one file that can break every site at once.</strong></td></tr>
+              <tr><td><code class="path">base/cert-manager/cluster-issuer.yaml</code></td><td>how TLS certificates get issued (Let's Encrypt, DNS-01 via Route53)</td></tr>
+              <tr><td><code class="path">base/cert-manager/certificate.yaml</code></td><td>the wildcard <code>*.bit-habit.com</code> certificate request</td></tr>
+              <tr><td><code class="path">base/cert-manager/aws-secret.example.yaml</code></td><td>a <em>redacted template</em>. The real one (Route53 keys) is gitignored and applied by hand</td></tr>
+              <tr><td><code class="path">base/middlewares/</code></td><td>Traefik middlewares, e.g. strip the <code>/api</code> prefix before forwarding</td></tr>
+              <tr><td><code class="path">apps/&lt;name&gt;/deployment.yaml</code></td><td>one folder per service — 17 of them (ghost, wikijs, gatus, sentinel, llm-app-lab, …)</td></tr>
+              <tr><td><code class="path">apps/argocd/application.yaml</code></td><td>GitOps config, <strong>written but never installed</strong> — see the next section</td></tr>
+              <tr><td><code class="path">k3s-bootstrap/traefik-config.yaml</code></td><td>the edge — Traefik on host ports 80/443, http→https redirect</td></tr>
+              <tr><td><code class="path">docs/index.html</code></td><td>this page. nginx serves this folder straight off the disk</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <p class="tldr" style="margin-top:26px"><strong>2 · In the app's own git repo</strong></p>
+        <p class="muted">
+          Two services keep their Kubernetes manifests next to their code, and deploy themselves.
+          This is a normal, defensible layout — the service stays self-contained, at the cost of this
+          repo no longer being the complete picture.
+        </p>
+        <div class="concept">
+          <table>
+            <thead><tr><th>Service</th><th>Repo · path</th></tr></thead>
+            <tbody>
+              <tr>
+                <td><code>physical-spark</code></td>
+                <td><a href="https://github.com/bookseal/physical-spark" target="_blank" rel="noopener">bookseal/physical-spark</a>
+                  → <code class="path">k8s/</code>, <code class="path">auth/k8s/</code>, applied by its own
+                  <code class="path">ops/deploy.sh</code>. It even brings its own Ingress.</td>
+              </tr>
+              <tr>
+                <td><code>quali-fit</code></td>
+                <td><a href="https://github.com/KIBA-Automation/quali-fit" target="_blank" rel="noopener">KIBA-Automation/quali-fit</a>
+                  → <code class="path">k8s/</code> (namespace, PVC, deployment, service, middleware, ingress).
+                  The image is tagged with the git commit it was built from, so a running Pod always names
+                  its own source.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <p class="tldr" style="margin-top:26px"><strong>3 · On the host — k3s's own directories</strong></p>
+        <p class="muted">These are not in the repo, and mostly cannot be. They belong to k3s itself.</p>
+        <div class="concept">
+          <table>
+            <thead><tr><th>Path</th><th>What it is</th></tr></thead>
+            <tbody>
+              <tr>
+                <td><code class="path">/var/lib/rancher/k3s/server/manifests/</code></td>
+                <td><mark>A magic folder: k3s applies every YAML you drop in here, automatically.</mark>
+                  It holds Traefik, CoreDNS, local-storage — and <code class="path">traefik-config.yaml</code>,
+                  a copy of the repo's file. To change the edge you
+                  <code>sudo cp</code> the file here and k3s redeploys Traefik on its own.
+                  <strong>This is a second source of truth, and ArgoCD can never manage it.</strong></td>
+              </tr>
+              <tr><td><code class="path">/etc/rancher/k3s/k3s.yaml</code></td><td>the admin <em>kubeconfig</em> — the credentials + address <code>kubectl</code> uses to talk to the cluster. Root-only.</td></tr>
+              <tr><td><code class="path">/etc/rancher/k3s/registries.yaml</code></td><td>where to pull container images from</td></tr>
+              <tr><td><code class="path">~/.kube/config</code></td><td>the same kubeconfig, copied for a normal user</td></tr>
+              <tr><td><code class="path">~/.ssh/authorized_keys</code></td><td>the deploy keys GitHub Actions uses, each pinned to <em>one</em> script (see the deploys section)</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <p class="tldr" style="margin-top:26px"><strong>And the leftovers</strong></p>
+        <div class="callout warn">
+          ⚠️ <strong>Two off-the-shelf apps are driven by YAML that lives in no repo.</strong>
+          <code class="path">/home/ubuntu/plane/k8s/</code> and
+          <code class="path">/home/ubuntu/fider/fider.yaml</code> deploy stock upstream images
+          (<code>makeplane/plane</code>, <code>getfider/fider</code>) — a Deployment, a Service, a
+          Postgres. Nothing bespoke, nothing precious, and both are barely used.
+          <mark>Recreating them from the upstream docs is an hour of work, so this is a tidiness item,
+          not a risk.</mark> The <em>real</em> thing still outside git is secrets — see
+          <a href="#grow">what to grow</a>.
+        </div>
+      </section>
+
+      <div class="check">
+        <p class="check-title">Checkpoint · end of Stage 4</p>
+        <p class="check-lead">Answer these before moving on. Open each one to check
+          yourself — if any answer is a surprise, that part is worth a re-read.</p>
+          <details>
+            <summary>A setting can live in one of three places. Name them.</summary>
+            <p>1) this infra repo, 2) an individual app’s own repo, 3) on the host itself, in k3s’s own directories — the last of which no GitOps tool can ever manage.</p>
+          </details>
+          <details>
+            <summary>Which single file can take every site down at once?</summary>
+            <p><code>base/ingress.yaml</code>, the shared routing table. That is why it is applied by hand, and why moving rules out of it into per-app files shrinks the blast radius.</p>
+          </details>
+          <details>
+            <summary>Something is running in the cluster but exists in no repository. What is the risk?</summary>
+            <p>Nobody owns it, nothing reviews it, and it cannot be rebuilt if the server is lost. It can also be quietly orphaned — the case study’s Flutter app ran for 103 days with no traffic routed to it.</p>
+          </details>
+      </div>
+
+      <div class="stage" id="stage5">
+        <div class="stage-no">5</div>
+        <div class="stage-body">
+          <p class="stage-kicker">GOING FURTHER</p>
+          <h2 class="stage-title">Stage 5 · What comes next</h2>
+          <p class="stage-know">What GitOps actually means, what adopting ArgoCD here would cost, and what this platform should fix first.</p>
+          <p class="stage-meta"><span class="time">about 15 minutes</span><span class="need">needs Stage 4</span></p>
+        </div>
+      </div>
+      <section id="gitops">
+        <h2><span class="badge gitops">GITOPS</span>ArgoCD — the idea, and what it would actually take</h2>
+        <p class="outcome"><span>After this you can say</span> what GitOps means, and what installing ArgoCD here would actually cost.</p>
+        <p class="tldr">
+          GitOps is one idea in one sentence: <mark>put the desired state in git, and let a program
+          inside the cluster continuously make reality match it.</mark> That's it. ArgoCD is the most
+          common program for doing that. Here is what changes, and what it would cost here.
+        </p>
+
+        <p class="tldr" style="margin-top:22px"><strong>The one thing that changes: push becomes pull</strong></p>
+        <p class="muted">
+          Today, everything <em>pushes into</em> the cluster from outside — GitHub Actions SSHes in, or
+          a human runs <code>kubectl apply</code>. The cluster is passive; it never looks at git.
+          GitOps inverts that: a controller runs <em>inside</em> the cluster and pulls from git forever.
+        </p>
+        <div class="mermaid">
+flowchart TB
+    subgraph PUSH["Today — push model"]
+      GH["Git (GitHub)"] --> ACT["GitHub Actions,\nor you at a terminal"]
+      ACT ==>|"pushes changes in"| K1["k3s cluster\n(passive — never reads git)"]
+    end
+    subgraph PULL["GitOps — pull model"]
+      AGO["ArgoCD controller\nrunning inside the cluster"] -->|"reads the repo\nevery ~3 minutes"| GH2["Git (GitHub)"]
+      AGO ==>|"makes the cluster match git\nforever"| K2["k3s cluster"]
+      K2 -->|"someone edited by hand?\nthat's drift"| AGO
+    end
+        </div>
+
+        <p class="tldr" style="margin-top:26px"><strong>The loop, precisely</strong></p>
+        <div class="mermaid">
+flowchart LR
+    G["Git repo\nbase/ and apps/\n= desired state"] --> C["Compare"]
+    L["Live cluster\n= actual state"] --> C
+    C -->|"identical"| OK["Synced. Do nothing."]
+    C -->|"different"| S["OutOfSync.\nApply the difference."]
+    S --> L
+        </div>
+
+        <div class="concept">
+          <span class="tag">the vocabulary you need — and nothing more</span>
+          <table>
+            <thead><tr><th>Word</th><th>What it means</th></tr></thead>
+            <tbody>
+              <tr><td><strong>Application</strong></td><td>ArgoCD's core config object. It says: "watch <em>this path</em> in <em>this repo</em>, and keep <em>this namespace</em> matching it." One per group of manifests. Already written here: <code class="path">apps/argocd/application.yaml</code>.</td></tr>
+              <tr><td><strong>Sync</strong></td><td>The act of applying git to the cluster. Can be automatic or a button you press.</td></tr>
+              <tr><td><strong>Synced / OutOfSync</strong></td><td>Does the cluster currently match git? OutOfSync means someone changed one side.</td></tr>
+              <tr><td><strong>Healthy / Degraded</strong></td><td>A <em>separate</em> question: are the Pods actually running? You can be Synced and Degraded — git applied fine, but the app is crashing.</td></tr>
+              <tr><td><strong>Drift</strong></td><td>The cluster no longer matches git. Usually because a human ran <code>kubectl edit</code> at 2am.</td></tr>
+              <tr><td><strong>selfHeal</strong></td><td>Automatically undo that 2am edit — re-apply git over it. <mark>This is the property people actually want from GitOps.</mark></td></tr>
+              <tr><td><strong>prune</strong></td><td>Delete things from the cluster when they're deleted from git. Powerful and dangerous: a bad file deletion becomes a production deletion. Off (<code>prune: false</code>) in this repo's config.</td></tr>
+              <tr><td><strong>app-of-apps</strong></td><td>One Application whose job is to create the other Applications. Adding a new service becomes "add one file", not "click around the UI".</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <p class="tldr" style="margin-top:26px"><strong>What installing it actually looks like</strong></p>
+        <p class="muted">Five commands. The wildcard DNS and certificate already cover a new subdomain, so the UI is reachable with no DNS or TLS work.</p>
+
+        <div class="callout good">
+          🧑‍🏫 <strong>Want to actually do it?</strong> There is a hands-on, step-by-step walkthrough of
+          this exact install — with the cluster's quirks baked in, quizzes, and a progress checklist:
+          <a href="argocd-tutorial.html"><strong>ArgoCD 설치 튜토리얼 (한국어)</strong></a>.
+        </div>
+
+        <pre><code># 1. a namespace to live in
+kubectl create namespace argocd
+
+# 2. install ArgoCD itself (one big official manifest)
+kubectl apply -n argocd -f \
+  https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
+
+# 3. let Traefik handle TLS, so ArgoCD serves plain http internally
+kubectl -n argocd patch deployment argocd-server --type json \
+  -p '[{"op":"add","path":"/spec/template/spec/containers/0/args/-","value":"--insecure"}]'
+
+# 4. route argocd.bit-habit.com to it (wildcard cert already covers this name)
+kubectl apply -f apps/argocd/ingress.yaml
+
+# 5. tell ArgoCD which repo and paths to watch — this file already exists
+kubectl apply -f apps/argocd/application.yaml</code></pre>
+
+        <p class="muted">Step 5 is the whole idea, and it is already written in this repo:</p>
+        <pre><code>spec:
+  source:
+    repoURL: https://github.com/bookseal/bit-habit-infra.git
+    targetRevision: main        # watch the main branch
+    path: base                  # watch this folder
+  syncPolicy:
+    automated:
+      prune: false              # do NOT delete things removed from git (safety)
+      selfHeal: true            # DO undo hand-edits made in the cluster</code></pre>
+
+        <div class="callout">
+          🤔 <strong>Why it is still not installed.</strong> Re-applying manifests on every deploy
+          already buys <code>selfHeal</code>, which is the valuable half — and it costs nothing to run.
+          ArgoCD adds ~5 Pods (controller, repo-server, api-server, redis, dex) to a free-tier ARM box,
+          plus one more web UI to lock down. For one node run by one person, that trade is honestly close.
+          <mark>The real argument for adopting it is not the tool — it's that the tool forces
+          everything into git.</mark> You can get that benefit first, and for free, without installing anything.
+        </div>
+      </section>
+      <section id="grow">
+        <h2><span class="badge grow">THE GAP</span>What to grow, in order</h2>
+        <p class="outcome"><span>After this you can say</span> what this platform should fix next, and in what order.</p>
+        <p class="tldr">
+          Honest scorecard: what this platform would need before GitOps is even <em>possible</em>,
+          ranked by what actually matters. <mark>There is exactly one real blocker, and it is not
+          the services — it is the secrets.</mark>
+        </p>
+
+        <div class="gap now">
+          <h4><span class="prio p1">THE ONE BLOCKER</span> &nbsp;Decide how secrets get into git</h4>
+          <p><strong>Today:</strong> real secrets are gitignored and applied by hand — the Route53 keys,
+            quali-fit's basic-auth, oauth2-proxy's client secret. Git holds only redacted
+            <code>*.example.yaml</code> templates.</p>
+          <p><strong>Why it blocks GitOps:</strong> a controller that syncs "everything in git" cannot sync
+            what is deliberately absent from git. You would keep a manual step forever, and every fresh
+            install would silently come up broken.</p>
+          <p><strong>The options,</strong> cheapest first:</p>
+          <ul>
+            <li><strong>Sealed Secrets</strong> — encrypt a Secret with a key only this cluster holds; the
+              encrypted file is safe to commit. Simplest thing that works for one cluster.</li>
+            <li><strong>SOPS + age</strong> — encrypt files with a key you keep; works without any
+              cluster-side operator, but ArgoCD needs a plugin to decrypt.</li>
+            <li><strong>External Secrets</strong> — keep secrets in AWS/Vault and sync them in. Most
+              robust, most moving parts. Overkill here.</li>
+          </ul>
+        </div>
+
+        <div class="gap">
+          <h4><span class="prio p3">TIDYING</span> &nbsp;Commit the two leftover YAML files</h4>
+          <p><strong>Today:</strong> <code>plane</code> and <code>fider</code> are deployed from YAML that
+            sits in a home directory and is in no repo. Both are stock upstream apps, and barely used.</p>
+          <p><strong>Why it is low on this list:</strong> ArgoCD can only sync what is in a repo, so
+            strictly these would have to move before it could manage them. But there is nothing bespoke
+            in them — <mark>losing them costs an hour with the upstream docs, not a service.</mark>
+            Drop them in <code class="path">apps/</code> whenever it is convenient.</p>
+        </div>
+
+        <div class="gap">
+          <h4><span class="prio p2">NEXT</span> &nbsp;Give apps their own namespaces</h4>
+          <p><strong>Today:</strong> almost everything is jammed into the <code>default</code> namespace.
+            Only plane, quali-fit, fider and headlamp have their own.</p>
+          <p><strong>Why it matters:</strong> a <em>namespace</em> is the unit ArgoCD scopes an Application
+            to, and the unit <code>prune</code> deletes within. With one shared <code>default</code>,
+            turning on prune means one controller with permission to delete everything.
+            Namespaces are what make prune safe to ever enable.</p>
+        </div>
+
+        <div class="gap">
+          <h4><span class="prio p2">NEXT</span> &nbsp;Accept that host-level config stays out</h4>
+          <p><code class="path">/var/lib/rancher/k3s/server/manifests/</code> is applied by k3s itself,
+            before and below ArgoCD. Traefik's own configuration will always be a
+            <code>sudo cp</code> onto the host. <strong>That is fine — but it should be written down, not
+            discovered.</strong> Do not chase 100%: aim for "everything that can be in git, is."</p>
+        </div>
+
+        <div class="gap">
+          <h4><span class="prio p3">LATER</span> &nbsp;Then, and only then, consider ArgoCD</h4>
+          <p>With secrets encrypted in git and namespaces per app, installing ArgoCD becomes the five
+            commands above and it just works. Do it in that order and it is a calm afternoon. Do it in
+            the reverse order and you spend a week fighting a controller that keeps trying to sync a
+            repo that does not contain the truth.</p>
+        </div>
+
+        <div class="concept">
+          <span class="tag">the scorecard, at a glance</span>
+          <table class="scorecard">
+            <thead><tr><th>Dimension</th><th>Today</th><th>Needed for GitOps</th></tr></thead>
+            <tbody>
+              <tr><td>Edge, TLS, routing</td><td>✅ in git</td><td>✅ already there</td></tr>
+              <tr><td>Most app manifests</td><td>✅ in git (17 apps)</td><td>✅ already there</td></tr>
+              <tr><td>physical-spark · quali-fit</td><td>✅ in their own git repos</td><td>✅ fine — ArgoCD reads many repos</td></tr>
+              <tr><td>plane · fider</td><td>⚠️ stock apps, YAML in no repo</td><td>commit them — an hour, low stakes</td></tr>
+              <tr><td>Secrets</td><td>❌ <strong>gitignored, applied by hand</strong></td><td>encrypted <em>in</em> git (Sealed Secrets)</td></tr>
+              <tr><td>Namespaces</td><td>⚠️ mostly one shared <code>default</code></td><td>one per app, so prune is safe</td></tr>
+              <tr><td>Self-healing</td><td>✅ <code>kubectl apply</code> on every deploy</td><td>✅ already have the property</td></tr>
+              <tr><td>Host-level (Traefik, CoreDNS)</td><td>manual <code>sudo cp</code></td><td>stays manual — out of scope, by design</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="callout good">
+          ✅ <strong>The takeaway.</strong> The gap between here and "industry standard" is not a missing
+          tool, and it is not the services — every service that matters is already in a repo.
+          <mark>It is one thing: secrets are the only part of this platform that git does not know
+          about.</mark> Close that and this is GitOps-ready, whether or not ArgoCD is ever installed.
+        </div>
+      </section>
+
+      <div class="check">
+        <p class="check-title">Checkpoint · end of Stage 5</p>
+        <p class="check-lead">Answer these before moving on. Open each one to check
+          yourself — if any answer is a surprise, that part is worth a re-read.</p>
+          <details>
+            <summary>Define GitOps in one sentence.</summary>
+            <p>Git holds the desired state, and a program inside the cluster continuously makes reality match it.</p>
+          </details>
+          <details>
+            <summary>Of all ArgoCD’s features, which one do people actually want?</summary>
+            <p><code>selfHeal</code> — automatically undoing hand-made cluster edits by re-applying git over them. Notably, re-applying manifests on every deploy already buys most of this without installing anything.</p>
+          </details>
+          <details>
+            <summary>What is the one real blocker to adopting GitOps here?</summary>
+            <p>Secrets. A controller that syncs “everything in git” cannot sync what is deliberately kept out of git. It is not the services — those are already there.</p>
+          </details>
+      </div>
+
+      <div class="stage appendix" id="stageA">
+        <div class="stage-no">·</div>
+        <div class="stage-body">
+          <p class="stage-kicker">REFERENCE</p>
+          <h2 class="stage-title">Appendix · Look things up</h2>
+          <p class="stage-know">Not a stage to read in order — two references to come back
+            to. How to add a site yourself, and every word on this page defined once.</p>
+          <p class="stage-meta"><span class="time">dip in as needed</span><span class="need free">no order required</span></p>
+        </div>
+      </div>
+      <section id="s1h">
+        <h2><span class="badge">HOW-TO</span>Go deeper — and add a site yourself</h2>
+        <p class="outcome"><span>After this you can say</span> how to add a new site to this cluster yourself.</p>
+
+        <p class="tldr"><strong>How a new site gets added</strong></p>
+        <ol>
+          <li>Put the app in the cluster — a small <em>Deployment</em> (the app) and a <em>Service</em> (its inside address).</li>
+          <li>Add one line to the routing list — an <em>Ingress</em> rule: <code>newsite.bit-habit.com → that Service</code>.</li>
+          <li>Apply it (<code>kubectl apply</code>). That's all: the wildcard DNS and wildcard certificate already
+            cover the new subdomain, so it's reachable over HTTPS right away.</li>
+        </ol>
+
+        <div class="concept">
+          <span class="tag">building blocks, precisely</span>
+          <ul>
+            <li><strong>k3s</strong> — a lightweight, single-node Kubernetes. It stores its state in SQLite instead of the usual etcd.</li>
+            <li><strong>Traefik</strong> — the ingress controller. It binds the host's ports 80 and 443 directly and terminates TLS (no separate load balancer).</li>
+            <li><strong>Ingress</strong> — the rules that map each hostname to a Service.</li>
+            <li><strong>Service (ClusterIP)</strong> — a stable in-cluster address for a set of Pods.</li>
+            <li><strong>Pod</strong> — one running instance of an app (one or more containers).</li>
+            <li><strong>cert-manager</strong> — requests and renews the Let's Encrypt certificate using a DNS-01 challenge through AWS Route53.</li>
+          </ul>
+        </div>
+
+        <div class="callout">
+          <strong>Edge facts</strong><br />
+          • Public IP <code>158.180.71.122</code> (private <code>10.0.0.61</code> inside Oracle Cloud).<br />
+          • Traefik holds ports <code>80</code> and <code>443</code> on the host directly.<br />
+          • Plain <code>http</code> → permanent <code>308</code> redirect to <code>https</code>.<br />
+          • One wildcard certificate <code>*.bit-habit.com</code> (Let's Encrypt, DNS-01 via Route53), stored in
+          the Secret <code>tls-secret</code> and auto-renewed before its 90-day expiry.
+        </div>
+
+        <p class="tldr" style="margin-top:26px"><strong>See the real configs</strong></p>
+        <p class="muted">It is all plain YAML in the public repo. A whole small app is often just this:</p>
+        <pre><code>apiVersion: apps/v1
+kind: Deployment            # keep N copies of my app running
+metadata: { name: myapp }
+spec:
+  replicas: 1
+  selector: { matchLabels: { app: myapp } }
+  template:
+    metadata: { labels: { app: myapp } }
+    spec:
+      containers:
+        - name: web
+          image: nginx:alpine
+---
+apiVersion: v1
+kind: Service               # one stable address for those copies
+metadata: { name: myapp-svc }
+spec:
+  selector: { app: myapp }
+  ports: [{ port: 80, targetPort: 80 }]</code></pre>
+        <p class="muted">The key files that run this platform (click to view on GitHub):</p>
+        <div class="concept">
+          <table>
+            <thead><tr><th>File</th><th>What it defines</th></tr></thead>
+            <tbody>
+              <tr><td><a href="https://github.com/bookseal/bit-habit-infra/blob/main/k3s-bootstrap/traefik-config.yaml" target="_blank" rel="noopener"><code>k3s-bootstrap/traefik-config.yaml</code></a></td><td>the edge — Traefik on host ports 80/443, http→https redirect</td></tr>
+              <tr><td><a href="https://github.com/bookseal/bit-habit-infra/blob/main/base/ingress.yaml" target="_blank" rel="noopener"><code>base/ingress.yaml</code></a></td><td>the routing table — every subdomain → its Service</td></tr>
+              <tr><td><a href="https://github.com/bookseal/bit-habit-infra/blob/main/base/cert-manager/cluster-issuer.yaml" target="_blank" rel="noopener"><code>base/cert-manager/cluster-issuer.yaml</code></a></td><td>how TLS is issued — Let's Encrypt + Route53 DNS-01</td></tr>
+              <tr><td><a href="https://github.com/bookseal/bit-habit-infra/blob/main/base/cert-manager/certificate.yaml" target="_blank" rel="noopener"><code>base/cert-manager/certificate.yaml</code></a></td><td>the wildcard <code>*.bit-habit.com</code> certificate</td></tr>
+              <tr><td><a href="https://github.com/bookseal/bit-habit-infra/blob/main/apps/llm-app-lab/deployment.yaml" target="_blank" rel="noopener"><code>apps/llm-app-lab/deployment.yaml</code></a></td><td>a minimal app — Deployment + Service</td></tr>
+              <tr><td><a href="https://github.com/bookseal/bit-habit-infra/blob/main/apps/gatus/deployment.yaml" target="_blank" rel="noopener"><code>apps/gatus/deployment.yaml</code></a></td><td>the status page — Deployment + Service + ConfigMap</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <p class="tldr" style="margin-top:26px"><strong>Go further</strong></p>
+        <ul>
+          <li><strong>Live status</strong> (anyone): <a href="https://status.bit-habit.com" target="_blank" rel="noopener">status.bit-habit.com</a>
+            — every site's up/down and response time, checked from the outside.</li>
+          <li><strong>Deep view</strong> (operators): <a href="https://headlamp.bit-habit.com" target="_blank" rel="noopener">headlamp.bit-habit.com</a>
+            — real pods, logs, and resource use (sign-in required).</li>
+          <li><strong>Source</strong>: <a href="https://github.com/bookseal/bit-habit-infra" target="_blank" rel="noopener">github.com/bookseal/bit-habit-infra</a>
+            — every manifest and setting.</li>
+        </ul>
+        <p><a class="btn" href="https://status.bit-habit.com" target="_blank" rel="noopener">● Open the full status page →</a></p>
+      </section>
       <section id="glossary">
         <h2><span class="badge">WORDS</span>Every term on this page, in plain language</h2>
         <p class="tldr">
@@ -1096,86 +1378,6 @@ sudo k3s kubectl exec deploy/static-web -- cat /etc/nginx/conf.d/default.conf</c
             </tbody>
           </table>
         </div>
-      </section>
-
-      <section id="s1h">
-        <h2><span class="badge">1 HOUR</span>Go deeper</h2>
-
-        <p class="tldr"><strong>How a new site gets added</strong></p>
-        <ol>
-          <li>Put the app in the cluster — a small <em>Deployment</em> (the app) and a <em>Service</em> (its inside address).</li>
-          <li>Add one line to the routing list — an <em>Ingress</em> rule: <code>newsite.bit-habit.com → that Service</code>.</li>
-          <li>Apply it (<code>kubectl apply</code>). That's all: the wildcard DNS and wildcard certificate already
-            cover the new subdomain, so it's reachable over HTTPS right away.</li>
-        </ol>
-
-        <div class="concept">
-          <span class="tag">building blocks, precisely</span>
-          <ul>
-            <li><strong>k3s</strong> — a lightweight, single-node Kubernetes. It stores its state in SQLite instead of the usual etcd.</li>
-            <li><strong>Traefik</strong> — the ingress controller. It binds the host's ports 80 and 443 directly and terminates TLS (no separate load balancer).</li>
-            <li><strong>Ingress</strong> — the rules that map each hostname to a Service.</li>
-            <li><strong>Service (ClusterIP)</strong> — a stable in-cluster address for a set of Pods.</li>
-            <li><strong>Pod</strong> — one running instance of an app (one or more containers).</li>
-            <li><strong>cert-manager</strong> — requests and renews the Let's Encrypt certificate using a DNS-01 challenge through AWS Route53.</li>
-          </ul>
-        </div>
-
-        <div class="callout">
-          <strong>Edge facts</strong><br />
-          • Public IP <code>158.180.71.122</code> (private <code>10.0.0.61</code> inside Oracle Cloud).<br />
-          • Traefik holds ports <code>80</code> and <code>443</code> on the host directly.<br />
-          • Plain <code>http</code> → permanent <code>308</code> redirect to <code>https</code>.<br />
-          • One wildcard certificate <code>*.bit-habit.com</code> (Let's Encrypt, DNS-01 via Route53), stored in
-          the Secret <code>tls-secret</code> and auto-renewed before its 90-day expiry.
-        </div>
-
-        <p class="tldr" style="margin-top:26px"><strong>See the real configs</strong></p>
-        <p class="muted">It is all plain YAML in the public repo. A whole small app is often just this:</p>
-        <pre><code>apiVersion: apps/v1
-kind: Deployment            # keep N copies of my app running
-metadata: { name: myapp }
-spec:
-  replicas: 1
-  selector: { matchLabels: { app: myapp } }
-  template:
-    metadata: { labels: { app: myapp } }
-    spec:
-      containers:
-        - name: web
-          image: nginx:alpine
----
-apiVersion: v1
-kind: Service               # one stable address for those copies
-metadata: { name: myapp-svc }
-spec:
-  selector: { app: myapp }
-  ports: [{ port: 80, targetPort: 80 }]</code></pre>
-        <p class="muted">The key files that run this platform (click to view on GitHub):</p>
-        <div class="concept">
-          <table>
-            <thead><tr><th>File</th><th>What it defines</th></tr></thead>
-            <tbody>
-              <tr><td><a href="https://github.com/bookseal/bit-habit-infra/blob/main/k3s-bootstrap/traefik-config.yaml" target="_blank" rel="noopener"><code>k3s-bootstrap/traefik-config.yaml</code></a></td><td>the edge — Traefik on host ports 80/443, http→https redirect</td></tr>
-              <tr><td><a href="https://github.com/bookseal/bit-habit-infra/blob/main/base/ingress.yaml" target="_blank" rel="noopener"><code>base/ingress.yaml</code></a></td><td>the routing table — every subdomain → its Service</td></tr>
-              <tr><td><a href="https://github.com/bookseal/bit-habit-infra/blob/main/base/cert-manager/cluster-issuer.yaml" target="_blank" rel="noopener"><code>base/cert-manager/cluster-issuer.yaml</code></a></td><td>how TLS is issued — Let's Encrypt + Route53 DNS-01</td></tr>
-              <tr><td><a href="https://github.com/bookseal/bit-habit-infra/blob/main/base/cert-manager/certificate.yaml" target="_blank" rel="noopener"><code>base/cert-manager/certificate.yaml</code></a></td><td>the wildcard <code>*.bit-habit.com</code> certificate</td></tr>
-              <tr><td><a href="https://github.com/bookseal/bit-habit-infra/blob/main/apps/llm-app-lab/deployment.yaml" target="_blank" rel="noopener"><code>apps/llm-app-lab/deployment.yaml</code></a></td><td>a minimal app — Deployment + Service</td></tr>
-              <tr><td><a href="https://github.com/bookseal/bit-habit-infra/blob/main/apps/gatus/deployment.yaml" target="_blank" rel="noopener"><code>apps/gatus/deployment.yaml</code></a></td><td>the status page — Deployment + Service + ConfigMap</td></tr>
-            </tbody>
-          </table>
-        </div>
-
-        <p class="tldr" style="margin-top:26px"><strong>Go further</strong></p>
-        <ul>
-          <li><strong>Live status</strong> (anyone): <a href="https://status.bit-habit.com" target="_blank" rel="noopener">status.bit-habit.com</a>
-            — every site's up/down and response time, checked from the outside.</li>
-          <li><strong>Deep view</strong> (operators): <a href="https://headlamp.bit-habit.com" target="_blank" rel="noopener">headlamp.bit-habit.com</a>
-            — real pods, logs, and resource use (sign-in required).</li>
-          <li><strong>Source</strong>: <a href="https://github.com/bookseal/bit-habit-infra" target="_blank" rel="noopener">github.com/bookseal/bit-habit-infra</a>
-            — every manifest and setting.</li>
-        </ul>
-        <p><a class="btn" href="https://status.bit-habit.com" target="_blank" rel="noopener">● Open the full status page →</a></p>
       </section>
 
       <footer>
