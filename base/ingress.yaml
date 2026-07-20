@@ -102,17 +102,10 @@ spec:
                 name: daily-seongsu-svc
                 port:
                   number: 80
-    # ---- Habit tracker frontend (UI only; API has its own Ingress below) ----
-    - host: habit.bit-habit.com
-      http:
-        paths:
-          - path: /
-            pathType: Prefix
-            backend:
-              service:
-                name: static-web-svc
-                port:
-                  number: 80
+    # ---- Habit tracker (habit.bit-habit.com) ----
+    # Deliberately NOT here. Both halves of this host live next to their app:
+    #   frontend  ->  apps/bithabit-web/ingress.yaml
+    #   /api/*    ->  apps/bithabit-api/ingress.yaml
     # ---- Startpage – personal dashboard ----
     - host: startpage.bit-habit.com
       http:
@@ -187,41 +180,5 @@ spec:
             backend:
               service:
                 name: wikijs-svc
-                port:
-                  number: 80
----
-# =============================================================================
-# Separate Ingress for the Habit API  (habit.bit-habit.com/api/*)
-#
-# A dedicated Ingress is required so the "strip-api-prefix" Middleware can be
-# applied only to the /api/ path.  Traefik removes the /api prefix before
-# forwarding requests to the upstream FastAPI service, so the backend does
-# not need to know about the /api prefix.
-# =============================================================================
-apiVersion: networking.k8s.io/v1
-kind: Ingress
-metadata:
-  name: habit-api-ingress
-  namespace: default
-  annotations:
-    kubernetes.io/ingress.class: traefik
-    traefik.ingress.kubernetes.io/router.entrypoints: websecure
-    traefik.ingress.kubernetes.io/router.tls: "true"
-    # Apply the strip-api-prefix Middleware defined in base/middlewares/
-    traefik.ingress.kubernetes.io/router.middlewares: default-strip-api-prefix@kubernetescrd
-spec:
-  tls:
-    - hosts:
-        - habit.bit-habit.com
-      secretName: tls-secret
-  rules:
-    - host: habit.bit-habit.com
-      http:
-        paths:
-          - path: /api/
-            pathType: Prefix
-            backend:
-              service:
-                name: bithabit-api-svc # FastAPI backend for the Habit tracker
                 port:
                   number: 80

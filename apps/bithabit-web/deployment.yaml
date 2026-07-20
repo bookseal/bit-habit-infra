@@ -1,0 +1,64 @@
+# =============================================================================
+# BitHabit frontend — the Flutter web build, served by nginx.
+#
+# A Flutter web build is just static files (index.html, main.dart.js, assets/),
+# so there is no app process here: a plain nginx serves the directory.
+#
+# KNOWN GAP: the build output is mounted from the host with hostPath rather
+# than baked into an image, so the running Pod does not name the commit it was
+# built from and a rollback is not possible. Same pattern as static-web.
+# =============================================================================
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: bithabit-web-conf
+  namespace: default
+data:
+  default.conf: |
+    server {
+        listen 80;
+        server_name habit.bit-habit.com;
+        root /usr/share/nginx/html;
+        index index.html;
+        # Flutter is a single-page app: every unknown path must return
+        # index.html so client-side routing (and page reloads) work.
+        location / {
+            try_files $uri $uri/ /index.html;
+        }
+    }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: bithabit-web
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: bithabit-web
+  template:
+    metadata:
+      labels:
+        app: bithabit-web
+    spec:
+      containers:
+        - name: nginx
+          image: nginx:alpine
+          ports:
+            - containerPort: 80
+          volumeMounts:
+            - name: flutter
+              mountPath: /usr/share/nginx/html
+            - name: config
+              mountPath: /etc/nginx/conf.d/default.conf
+              subPath: default.conf
+      volumes:
+        # `flutter build web` output, pulled on the host by the app repo CI.
+        - name: flutter
+          hostPath:
+            path: /home/ubuntu/workspace/bithabit_flutter/build/web
+            type: Directory
+        - name: config
+          configMap:
+            name: bithabit-web-conf

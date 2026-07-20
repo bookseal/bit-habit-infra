@@ -1,0 +1,40 @@
+# =============================================================================
+# BitHabit frontend routing — habit.bit-habit.com/
+#
+# Split out of base/ingress.yaml (main-ingress) on 2026-07-20, after that
+# monolithic rule had pointed at the wrong Service (static-web-svc) for months
+# without anyone noticing. Keeping this rule next to the Deployment it serves
+# means the route and its backend can no longer drift apart unseen.
+#
+# The /api/ prefix on this same host is served by apps/bithabit-api/ingress.yaml.
+# Two Ingresses may share one host: Traefik prefers the more specific path, so
+# /api/ wins over / here.
+#
+# No cert-manager annotation on purpose: this reuses the existing wildcard
+# certificate (Secret tls-secret, *.bit-habit.com) instead of issuing a new one.
+# =============================================================================
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: bithabit-web-ingress
+  namespace: default
+  annotations:
+    kubernetes.io/ingress.class: traefik
+    traefik.ingress.kubernetes.io/router.entrypoints: websecure
+    traefik.ingress.kubernetes.io/router.tls: "true"
+spec:
+  tls:
+    - hosts:
+        - habit.bit-habit.com
+      secretName: tls-secret
+  rules:
+    - host: habit.bit-habit.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: bithabit-web-svc # Flutter web build (apps/bithabit-web)
+                port:
+                  number: 80

@@ -1,0 +1,39 @@
+# =============================================================================
+# BitHabit API routing — habit.bit-habit.com/api/*
+#
+# Moved here from base/ingress.yaml on 2026-07-20 so that every habit.* route
+# lives next to the app it serves. The frontend half is in
+# apps/bithabit-web/ingress.yaml.
+#
+# A dedicated Ingress is required so the "strip-api-prefix" Middleware can be
+# applied only to the /api/ path. Traefik removes the /api prefix before
+# forwarding requests to the upstream FastAPI service, so the backend does not
+# need to know about the /api prefix.
+# =============================================================================
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: habit-api-ingress
+  namespace: default
+  annotations:
+    kubernetes.io/ingress.class: traefik
+    traefik.ingress.kubernetes.io/router.entrypoints: websecure
+    traefik.ingress.kubernetes.io/router.tls: "true"
+    # Middleware defined in base/middlewares/strip-api-middleware.yaml
+    traefik.ingress.kubernetes.io/router.middlewares: default-strip-api-prefix@kubernetescrd
+spec:
+  tls:
+    - hosts:
+        - habit.bit-habit.com
+      secretName: tls-secret
+  rules:
+    - host: habit.bit-habit.com
+      http:
+        paths:
+          - path: /api/
+            pathType: Prefix
+            backend:
+              service:
+                name: bithabit-api-svc # FastAPI backend (apps/bithabit-api)
+                port:
+                  number: 80
