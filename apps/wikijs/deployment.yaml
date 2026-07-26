@@ -17,7 +17,7 @@ spec:
       containers:
         - name: postgres
           image: docker.io/library/postgres:17-alpine
-          imagePullPolicy: Never
+          imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 5432
           env:
@@ -71,7 +71,7 @@ spec:
       containers:
         - name: wiki
           image: ghcr.io/requarks/wiki:2
-          imagePullPolicy: Never
+          imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 3000
           env:

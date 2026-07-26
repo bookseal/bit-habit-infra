@@ -34,7 +34,7 @@ spec:
       containers:
         - name: mysql
           image: docker.io/library/mysql:8.0
-          imagePullPolicy: Never # Use the locally cached image
+          imagePullPolicy: IfNotPresent # 캐시가 있으면 쓰고, 없으면 받아온다
           ports:
             - containerPort: 3306
           env:
@@ -100,7 +100,7 @@ spec:
       containers:
         - name: ghost
           image: docker.io/library/ghost:5-alpine
-          imagePullPolicy: Never # Use the locally cached image
+          imagePullPolicy: IfNotPresent # 캐시가 있으면 쓰고, 없으면 받아온다
           ports:
             - containerPort: 2368 # Ghost's default HTTP port
           env:

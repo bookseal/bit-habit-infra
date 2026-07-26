@@ -17,8 +17,8 @@ spec:
     spec:
       containers:
         - name: seoul-apt-price
-          image: seoul-apt-price:latest
-          imagePullPolicy: Never
+          image: localhost:5000/seoul-apt-price:latest
+          imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8501
           resources:

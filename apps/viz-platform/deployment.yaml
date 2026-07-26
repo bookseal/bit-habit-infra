@@ -15,8 +15,9 @@ spec:
     spec:
       containers:
         - name: viz-platform
-          image: docker.io/library/viz-bit-habit:latest
-          imagePullPolicy: Never
+          # 주의: 이미지 이름은 앱 이름(viz-platform)이 아니라 viz-bit-habit 입니다
+          image: localhost:5000/viz-bit-habit:latest
+          imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8501
           volumeMounts:

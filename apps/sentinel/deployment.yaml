@@ -17,8 +17,8 @@ spec:
     spec:
       containers:
         - name: sentinel
-          image: sentinel:latest
-          imagePullPolicy: Never
+          image: localhost:5000/sentinel:latest
+          imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 7860
               name: http

@@ -15,8 +15,8 @@ spec:
     spec:
       containers:
         - name: booktoss
-          image: docker.io/library/booktoss:latest
-          imagePullPolicy: Never
+          image: localhost:5000/booktoss:latest
+          imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8000
           envFrom:
