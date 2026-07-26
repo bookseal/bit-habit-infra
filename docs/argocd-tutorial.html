@@ -202,8 +202,10 @@
       <p><code>https://argocd.bit-habit.com</code>에 로그인되고, 보드에 앱 타일이 뜨고,
       손으로 만든 드리프트를 ArgoCD가 잡아내는 걸 <b>내 눈으로</b> 본다.</p></div>
     <div class="meta-card" style="border-color:#f6c9c5;background:#fdeceb"><h4 style="color:#e0413a">선행 조건 — 아직 미완</h4>
-      <p>저장소와 클러스터의 <b>드리프트가 0</b>이어야 합니다. 지금은 <b>9개 앱</b>이 어긋나 있어요.
-      <a href="#plan">앞으로 할 일</a>의 1~2단계를 먼저 끝내세요.</p></div>
+      <p>저장소와 클러스터의 <b>드리프트가 0</b>이어야 합니다.
+      11개 중 <b style="color:#28a745">8개는 정리됐고</b>, <b>3개가 남았습니다</b> —
+      <code>bithabit-api</code> · <code>oauth2-proxy</code> · <code>base/ingress.yaml</code>.
+      <a href="#plan">앞으로 할 일</a>의 2단계를 마저 끝내세요.</p></div>
   </div>
 
   <div class="callout warn"><span class="tag">이 페이지는 “빨리 설치”가 목표가 아닙니다</span>
@@ -286,23 +288,37 @@ sequenceDiagram
     그래서 ArgoCD를 켜기 <b>전에</b> 이 간격을 손으로 한 번 메워야 합니다.</span>
   </div>
 
-  <h3>오늘 실제로 잰 값</h3>
+  <h3>실제로 잰 값 — 그리고 그날 안에 8개가 사라졌습니다</h3>
 
   <p>추측이 아니라 <code>kubectl diff</code>로 클러스터에 직접 물어본 결과입니다.
-  <b>drift = 저장소를 apply하면 바뀌는 줄 수</b>입니다.</p>
+  <b>drift = 저장소를 apply하면 바뀌는 줄 수</b>. 2026-07-26 오전에 잰 값과, 같은 날 오후의 값입니다.</p>
 
   <table class="plain">
-    <tr><th>앱</th><th>드리프트</th><th>지금 apply하면</th></tr>
+    <tr><th>앱</th><th>오전</th><th>오후</th><th>무엇이 문제였나</th></tr>
     <tr><td>bithabit-web · code-server · gatus<br>headlamp · infra · llm-app-lab · static-web</td>
-        <td><b style="color:#28a745">0줄</b></td><td>아무 일도 안 일어남 ✅</td></tr>
+        <td><b style="color:#28a745">0</b></td><td><b style="color:#28a745">0</b></td>
+        <td>원래 깨끗했음 — 전부 정적 사이트라 <b>이미지가 없습니다</b></td></tr>
     <tr><td>booktoss · daily-seongsu · sentinel<br>seoul-apt-price · startpage · viz-platform</td>
-        <td>각 6줄</td><td>이미지 경로가 <code>localhost:5000/…</code> → <code>docker.io/…</code>로 바뀌고<br>
-        <code>imagePullPolicy: Never</code>가 됨 → <b style="color:#e0413a">ErrImageNeverPull</b></td></tr>
-    <tr><td>ghost · wikijs</td><td>각 8줄</td><td>같은 이미지 문제</td></tr>
-    <tr><td><b>bithabit-api</b></td><td><b style="color:#e0413a">18줄</b></td>
+        <td>각 6</td><td><b style="color:#28a745">0</b> ✅</td>
+        <td>저장소가 <code>docker.io/library/&lt;앱&gt;:latest</code>라고 주장했는데
+        <b>존재할 수 없는 경로</b>였습니다 (<code>library/</code>는 Docker Hub 공식 이미지 전용).
+        진짜는 <code>localhost:5000/…</code></td></tr>
+    <tr><td>ghost · wikijs</td><td>각 8</td><td><b style="color:#28a745">0</b> ✅</td>
+        <td>이미지는 맞고 <code>imagePullPolicy: Never</code>만 틀림 —
+        <b>노드 캐시가 살아 있는 동안만</b> 동작하는 시한폭탄</td></tr>
+    <tr><td><b>bithabit-api</b></td><td>18</td><td><b style="color:#e0413a">18</b></td>
         <td>이미지 + <b>포트 8000 → 8002</b> + Endpoints가 죽은 IP로 → <b style="color:#e0413a">API 전면 중단</b></td></tr>
-    <tr><td>oauth2-proxy</td><td>110줄</td><td>클러스터에 <b>없는</b> 앱이 새로 생성됨</td></tr>
+    <tr><td>oauth2-proxy</td><td>110</td><td><b style="color:#e0413a">110</b></td>
+        <td>클러스터에 <b>없는</b> 앱이 새로 생성됨</td></tr>
+    <tr><td><code>base/ingress.yaml</code></td><td>2</td><td><b style="color:#e0413a">2</b></td>
+        <td>TLS 호스트 목록에서 <code>www.blog</code>·<code>www.wiki</code>가 빠짐</td></tr>
   </table>
+
+  <div class="callout good"><span class="tag">8개를 지우는 데 <code>kubectl</code>을 한 번도 안 썼습니다</span>
+    <p>바뀐 건 <b>git뿐</b>입니다 — 저장소의 값을 클러스터의 값으로 고쳐 쓰고, push하고, 서버에서 pull.
+    클러스터에는 손도 안 댔습니다. <mark>“드리프트 해소”가 위험한 작업처럼 들리지만,
+    방향을 <b>클러스터 → git</b>으로 잡으면 본질적으로 무위험</mark>입니다. 위험은 반대 방향에만 있어요.
+    남은 3개가 어려운 건 줄 수가 많아서가 아니라, <b>어느 쪽이 정답인지 사람이 판단해야</b> 하기 때문입니다.</p></div>
 
   <div class="callout danger"><span class="tag">가장 위험한 파일 한 개</span>
     <p><code>apps/bithabit-api/service.yaml</code>에는 손으로 쓴 <code>Endpoints</code>가 들어 있고,
@@ -310,6 +326,59 @@ sequenceDiagram
     <code>10.42.0.22:8000</code>에서 돕니다. 이 파일을 apply하면 Service가 <b>아무것도 없는 주소</b>를 가리키게 됩니다.
     <br><br>이건 “옛날에는 맞았던 파일”이에요 — API가 호스트에서 돌던 시절의 화석입니다.
     <mark>드리프트는 틀린 파일이 아니라, 낡은 파일의 문제</mark>입니다.</p></div>
+
+  <h3>왜 이렇게 됐나 — 매니페스트는 <b>틀린 게 아니라 화석</b>이었습니다</h3>
+
+  <p>“누가 실수했나”를 찾으려고 서버의 <code>.bash_history</code>를 뒤졌는데, 실수한 사람이 없었습니다.
+  대신 <b>사라진 워크플로</b>가 그대로 남아 있었어요.</p>
+
+  <div class="code term"><div class="filename">서버의 ~/.bash_history — 옛날 배포 방식<span class="lang">bash</span></div>
+<pre><code>docker build -t sentinel:latest . \
+  &amp;&amp; docker save sentinel:latest \
+  | k3s ctr images import - \
+  &amp;&amp; kubectl rollout restart deployment/sentinel</code></pre></div>
+
+  <p>레지스트리가 생기기 전에는 이미지를 <b>containerd에 직접 밀어넣었습니다</b>.
+  그 방식에는 <mark>“받아올 곳”이 아예 없습니다</mark> — 그러니 매니페스트가
+  <code>image: sentinel:latest</code>(레지스트리 호스트 없음) 와 <code>imagePullPolicy: Never</code>라고
+  적은 건 <b>완벽하게 옳았습니다.</b></p>
+
+  <div class="diagram">
+    <pre class="mermaid">
+flowchart LR
+  subgraph OLD["옛날 — 레지스트리가 없던 시절"]
+    O1["docker build<br/>sentinel:latest"] --> O2["docker save"]
+    O2 --> O3["k3s ctr images import"] --> O4["containerd<br/>이미지 저장소"]
+  end
+  subgraph NEW["지금 — 호스트 레지스트리"]
+    N1["docker build<br/>localhost:5000/sentinel"] --> N2["docker push"]
+    N2 --> N3["registry:2<br/>127.0.0.1:5000"]
+    N3 -->|"pull"| N4["containerd<br/>이미지 저장소"]
+  end
+  OLD ~~~ NEW
+    </pre>
+    <span class="cap">차이는 딱 하나 — <b>아래 경로에만 <code>pull</code> 화살표가 있습니다.</b>
+    위에는 pull이 없으니 <code>Never</code>가 정답이었고, 아래에는 있으니 <code>Never</code>가 곧 사고입니다.
+    <b>워크플로는 바뀌었는데 매니페스트만 옛 세계에 남았습니다.</b></span>
+  </div>
+
+  <div class="callout learn"><span class="tag">여기서 배울 것</span>
+    <p>드리프트를 “누가 게을러서 생긴 것”으로 보면 대책이 “다음엔 잘하자”밖에 안 나옵니다.
+    실제로는 <mark>인프라가 진화할 때 매니페스트만 따라오지 못한 것</mark>이고,
+    그건 <b>돌아오는 화살표가 없다</b>는 구조가 만든 필연입니다.
+    ArgoCD가 진짜로 고치는 건 사람의 부주의가 아니라 <b>이 구조</b>예요 —
+    켜는 순간 “매니페스트를 안 고치면 배포가 안 되는” 세계가 되니까요.</p></div>
+
+  <div class="callout danger"><span class="tag">⚠️ 조사하다 발견한 살아있는 함정</span>
+    <p>새 이미지를 push하고 <code>rollout restart</code>를 쳐도,
+    <b><code>imagePullPolicy: IfNotPresent</code>면 새 이미지를 안 받습니다.</b>
+    containerd에 <code>:latest</code> 태그가 이미 있으니 “있네, 안 받아도 되겠다”가 되고,
+    재시작은 <b>옛 코드를 조용히 다시 돌립니다.</b></p>
+    <p style="margin-top:8px">지금 이 클러스터에서 자체 빌드 앱 9개 중 —
+    <b>자동 배포되는 2개</b>(<code>mentoring</code>, <code>pr-auth</code>)만 <code>Always</code>로 맞게 돼 있고,
+    <b>손으로 배포하는 7개는 전부 <code>IfNotPresent</code></b>입니다.
+    <mark>고친 사람이 그 지식을 커밋이 아니라 클러스터에만 남겨서</mark>, 나머지 7개는 그 수정을 못 받았습니다.
+    — 이게 <code>kubectl edit</code>이 위험한 진짜 이유입니다.</p></div>
 
   <h3>오늘 아침에 이미 한 일</h3>
 
@@ -465,6 +534,14 @@ git push</code></pre></div>
 sudo k3s kubectl diff -R -f apps/startpage/ ; echo "exit=$?"</code></pre></div>
   <p class="expect"><b>예상:</b> 출력이 <b>비어 있고</b> <code>exit=0</code>.
   <mark>이 순간 <code>startpage</code>는 GitOps 준비가 끝난 앱</mark>입니다. 나머지도 똑같이 반복하세요.</p>
+
+  <div class="callout good"><span class="tag">이 예제는 <b>이미 실행됐습니다</b> — 커밋으로 확인하세요</span>
+    <p>위 절차를 <code>startpage</code>를 포함한 <b>8개 앱에 그대로</b> 적용한 게 커밋
+    <code>c544eb6</code>입니다. 읽기만 하지 말고 <b>진짜 diff를 열어보세요</b> —
+    문서의 설명과 실제 변경이 같은지 확인하는 습관이, 나중에 남의 저장소를 읽을 때 가장 크게 남습니다.</p>
+    <div class="code term" style="margin-top:10px"><div class="filename">어디서든<span class="lang">bash</span></div>
+<pre><code>git show c544eb6 --stat
+git show c544eb6 -- apps/startpage/deployment.yaml</code></pre></div></div>
 
   <div class="callout warn"><span class="tag">특별 취급이 필요한 3개</span>
     <p><b>bithabit-api</b> — 이미지뿐 아니라 <b>포트와 Endpoints</b>가 다릅니다. 손으로 쓴 <code>Endpoints</code>는
