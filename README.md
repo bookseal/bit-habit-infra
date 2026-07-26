@@ -50,6 +50,62 @@ Static sites are live the instant the pull finishes: nginx serves the git
 checkout straight off the disk via a `hostPath` mount, so there is no image to
 build and no Pod to restart (~10s end to end).
 
+### Where container images come from
+
+The apps that *aren't* static run from a **Docker registry on the host itself**,
+at `localhost:5000`. Its catalog is the list of things built here:
+
+```
+$ curl -s http://localhost:5000/v2/_catalog
+{"repositories":["bithabit-api","booktoss","daily-seongsu","mentoring-api",
+                 "pr-auth","sentinel","seoul-apt-price","startpage","viz-bit-habit"]}
+```
+
+So those Deployments say `image: localhost:5000/<name>:latest` with
+`imagePullPolicy: IfNotPresent`. This was undocumented until 2026-07-26, and the
+cost of that was concrete: the manifests had drifted to
+`docker.io/library/<name>:latest` — a path that cannot exist, since `library/`
+is Docker Hub's namespace for official images — and nobody noticed, because the
+cluster was never re-applied from them.
+
+The registry is a `registry:2` container on the host, bound to `127.0.0.1:5000`
+only — never reachable from outside. k3s is told where to find it by
+[`k3s-bootstrap/registries.yaml.example`](k3s-bootstrap/registries.yaml.example),
+which maps `localhost:5000` to `http://127.0.0.1:5000` over plain HTTP.
+
+**Getting a new image in** is three commands — build, push, restart:
+
+```bash
+docker build -t localhost:5000/<name>:latest <dir>/
+docker push localhost:5000/<name>:latest
+sudo k3s kubectl rollout restart deploy/<name>
+```
+
+Two apps do this automatically, from their own repos, triggered by the SSH
+forced command described above — see
+[`mentoring/ops/deploy.sh`](https://github.com/bookseal/mentoring/blob/main/ops/deploy.sh)
+and [`physical-spark/ops/deploy.sh`](https://github.com/bookseal/physical-spark/blob/main/ops/deploy.sh).
+Both build only when the source directory actually changed, and both fall back
+to building when the image is simply missing, so a rebuilt box self-heals rather
+than landing in `ImagePullBackOff`. **The other seven are deployed by hand** —
+those repos have no deploy script.
+
+> **The restart only picks up new code if the Deployment says
+> `imagePullPolicy: Always`.** With `IfNotPresent`, containerd already has
+> something tagged `:latest`, so it will not fetch the one just pushed and the
+> restart quietly re-runs the old code. The two automated apps get this right
+> (`Always`); the seven hand-deployed ones are still on `IfNotPresent` — a
+> latent trap, not yet an outage. Recorded here as-is; changing it is a cluster
+> change and belongs in its own commit.
+
+**Why the manifests had drifted:** before this registry existed, images were
+side-loaded straight into containerd —
+`docker build -t sentinel:latest . && docker save sentinel:latest | k3s ctr images import -`.
+That workflow needs exactly what the old manifests said: a bare tag with no
+registry host, and `imagePullPolicy: Never` (there was nowhere to pull *from*).
+The registry replaced it; the manifests were never updated. They were not wrong
+— they were **fossils of a workflow that no longer runs**.
+
 > **On ArgoCD:** [`apps/argocd/`](apps/argocd/) and
 > [`docs/argocd-guide.md`](docs/argocd-guide.md) are kept as a **reference — not
 > installed.** There is no `argocd` namespace on the cluster. For a single node
