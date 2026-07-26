@@ -171,6 +171,8 @@
     <span class="brand">bit<span class="dot">·</span>habit 인프라 튜토리얼</span>
     <nav>
       <a href="index.html">← 개요</a>
+      <a href="#map"><b>숲</b></a>
+      <a href="#plan"><b>할 일</b></a>
       <a href="#why">왜 GitOps?</a>
       <a href="#words">용어</a>
       <a href="#install">설치</a>
@@ -199,6 +201,9 @@
     <div class="meta-card"><h4>완료 기준</h4>
       <p><code>https://argocd.bit-habit.com</code>에 로그인되고, 보드에 앱 타일이 뜨고,
       손으로 만든 드리프트를 ArgoCD가 잡아내는 걸 <b>내 눈으로</b> 본다.</p></div>
+    <div class="meta-card" style="border-color:#f6c9c5;background:#fdeceb"><h4 style="color:#e0413a">선행 조건 — 아직 미완</h4>
+      <p>저장소와 클러스터의 <b>드리프트가 0</b>이어야 합니다. 지금은 <b>9개 앱</b>이 어긋나 있어요.
+      <a href="#plan">앞으로 할 일</a>의 1~2단계를 먼저 끝내세요.</p></div>
   </div>
 
   <div class="callout warn"><span class="tag">이 페이지는 “빨리 설치”가 목표가 아닙니다</span>
@@ -220,6 +225,360 @@
       <li>secret 복제기가 없습니다. 와일드카드 TLS secret을 <code>argocd</code> 네임스페이스로 <b>손으로 복사</b>합니다(4단계).</li>
       <li><code>docs/</code>는 nginx가 hostPath로 <b>이 디스크에서 바로</b> 서빙합니다 — 이 페이지도 그렇게 떠 있습니다.</li>
     </ul></div>
+
+
+  <div class="callout danger"><span class="tag">🛑 먼저 — 오늘은 아직 설치하면 안 됩니다</span>
+    <p>2026-07-26에 이 클러스터를 실제로 측정했습니다. 지금 상태에서 이 페이지의 7번(전체 확대)까지 가면
+    <b>사이트 여러 개가 내려갑니다.</b> 저장소가 클러스터보다 <b>낡았기</b> 때문에, ArgoCD가 “고쳐주는” 게 아니라
+    <b>낡은 상태로 되돌립니다.</b> 아래 <a href="#map">숲</a>에서 왜 그런지 보고,
+    <a href="#plan">앞으로 할 일</a>의 준비 단계를 끝낸 다음 0번부터 시작하세요.</p></div>
+
+
+  <!-- ============================================================
+       숲 — 설정은 어디에 사는가
+       ============================================================ -->
+  <h2 id="map">숲 — 지금 설정은 <b>몇 군데에</b> 살고 있나</h2>
+
+  <p>ArgoCD가 헷갈리는 이유는 명령어가 어려워서가 아닙니다.
+  <mark>“설정”이 한 군데가 아니라 네 군데에 산다</mark>는 걸 아무도 명시적으로 말해주지 않아서예요.
+  그 네 개를 먼저 그리고 시작합니다. 이 그림이 이 페이지 전체의 지도입니다.</p>
+
+  <div class="diagram">
+    <pre class="mermaid">
+flowchart LR
+  L["💻 내 노트북<br/>git clone"]
+  G["☁️ GitHub<br/>origin/main"]
+  S["🖥️ 서버 디스크<br/>~/workspace/bit-habit-infra"]
+  K["☸️ 클러스터 etcd<br/>실제로 도는 것"]
+  L -->|"git push"| G
+  G -->|"git pull"| S
+  S -.->|"kubectl apply<br/>사람이 칠 때만"| K
+  K -.->|"돌아오는 길이 없다"| S
+  linkStyle 3 stroke:#e0413a,stroke-width:2px
+    </pre>
+    <span class="cap">화살표 4개 중 <b>위의 2개는 git이 자동으로</b> 맞춰줍니다. 세 번째 점선만 <b>사람의 손</b>이고,
+    네 번째는 <b>아예 존재하지 않습니다</b> — 클러스터에서 뭘 바꿔도 <b>파일로 돌아오지 않습니다.</b></span>
+  </div>
+
+  <div class="callout why"><span class="tag">여기가 핵심입니다</span>
+    <p><code>kubectl apply -f x.yaml</code>은 “파일을 연결”하는 게 아니라 <b>복사</b>입니다.
+    apply를 치는 순간 내용이 etcd로 복사되고, 그 다음부터 <b>파일과 etcd는 남남</b>입니다.
+    파일을 고쳐도 클러스터는 모르고, 클러스터를 고쳐도 파일은 모릅니다.
+    <mark>YAML 파일은 “현재 상태”가 아니라 “마지막으로 apply를 쳤을 때의 기억”</mark>이에요.</p></div>
+
+  <h3>드리프트는 이렇게 생깁니다 (이 클러스터에서 실제로 일어난 일)</h3>
+
+  <div class="diagram">
+    <pre class="mermaid">
+sequenceDiagram
+  autonumber
+  participant F as 저장소의 YAML
+  participant K as 클러스터 etcd
+  Note over F,K: 116일 전 — 둘이 같음
+  F->>K: kubectl apply
+  Note over K: 어느 날, 급하게<br/>로컬 레지스트리로 이미지 방식을 바꿈
+  K->>K: kubectl edit / set image
+  Note over F: 파일은 안 고침<br/>(당장 잘 도니까)
+  Note over F,K: 오늘 — 둘이 다름 = 드리프트
+  Note over F,K: 여기서 ArgoCD를 켜면?<br/>git이 이기고, 클러스터가 116일 전으로 돌아감
+    </pre>
+    <span class="cap">아무도 잘못하지 않았습니다. <b>돌아오는 화살표가 없다</b>는 구조가 만든 결과예요.
+    그래서 ArgoCD를 켜기 <b>전에</b> 이 간격을 손으로 한 번 메워야 합니다.</span>
+  </div>
+
+  <h3>오늘 실제로 잰 값</h3>
+
+  <p>추측이 아니라 <code>kubectl diff</code>로 클러스터에 직접 물어본 결과입니다.
+  <b>drift = 저장소를 apply하면 바뀌는 줄 수</b>입니다.</p>
+
+  <table class="plain">
+    <tr><th>앱</th><th>드리프트</th><th>지금 apply하면</th></tr>
+    <tr><td>bithabit-web · code-server · gatus<br>headlamp · infra · llm-app-lab · static-web</td>
+        <td><b style="color:#28a745">0줄</b></td><td>아무 일도 안 일어남 ✅</td></tr>
+    <tr><td>booktoss · daily-seongsu · sentinel<br>seoul-apt-price · startpage · viz-platform</td>
+        <td>각 6줄</td><td>이미지 경로가 <code>localhost:5000/…</code> → <code>docker.io/…</code>로 바뀌고<br>
+        <code>imagePullPolicy: Never</code>가 됨 → <b style="color:#e0413a">ErrImageNeverPull</b></td></tr>
+    <tr><td>ghost · wikijs</td><td>각 8줄</td><td>같은 이미지 문제</td></tr>
+    <tr><td><b>bithabit-api</b></td><td><b style="color:#e0413a">18줄</b></td>
+        <td>이미지 + <b>포트 8000 → 8002</b> + Endpoints가 죽은 IP로 → <b style="color:#e0413a">API 전면 중단</b></td></tr>
+    <tr><td>oauth2-proxy</td><td>110줄</td><td>클러스터에 <b>없는</b> 앱이 새로 생성됨</td></tr>
+  </table>
+
+  <div class="callout danger"><span class="tag">가장 위험한 파일 한 개</span>
+    <p><code>apps/bithabit-api/service.yaml</code>에는 손으로 쓴 <code>Endpoints</code>가 들어 있고,
+    <code>10.0.0.61:8002</code>(옛날 <b>호스트</b> IP)를 가리킵니다. 지금 실제로는 API가 <b>Pod</b>
+    <code>10.42.0.22:8000</code>에서 돕니다. 이 파일을 apply하면 Service가 <b>아무것도 없는 주소</b>를 가리키게 됩니다.
+    <br><br>이건 “옛날에는 맞았던 파일”이에요 — API가 호스트에서 돌던 시절의 화석입니다.
+    <mark>드리프트는 틀린 파일이 아니라, 낡은 파일의 문제</mark>입니다.</p></div>
+
+  <h3>오늘 아침에 이미 한 일</h3>
+
+  <p>사실 <b>사본은 네 개가 아니라 다섯 개</b>였습니다. 서버에 <b>푸시 안 된 커밋 3개</b>가 있었고,
+  그중 하나가 <code>habit.bit-habit.com</code> 장애 수정이었습니다 — <b>git에는 없고 서버에만 있던 수정</b>이죠.</p>
+
+  <div class="diagram">
+    <pre class="mermaid">
+flowchart LR
+  subgraph B["오늘 아침 이전 — 진실이 4개"]
+    B1["노트북<br/>681ccbe"]:::old
+    B2["GitHub<br/>81b52bd"]:::mid
+    B3["서버<br/>9b6f0ba"]:::new
+    B4["클러스터"]:::k
+  end
+  subgraph A["push + pull 이후 — 진실이 2개"]
+    A1["노트북 · GitHub · 서버<br/>모두 9b6f0ba"]:::new
+    A2["클러스터"]:::k
+    A1 -.->|"남은 간격<br/>= 드리프트"| A2
+  end
+  B ==> A
+  classDef old fill:#fdeceb,stroke:#e0413a
+  classDef mid fill:#fff7e6,stroke:#e36209
+  classDef new fill:#eafaf0,stroke:#28a745
+  classDef k fill:#eef4ff,stroke:#2d6cdf
+    </pre>
+    <span class="cap">이게 <b>0단계</b>였고 이미 끝났습니다. 남은 간격은 하나 — <b>git ↔ 클러스터</b>.
+    그 간격을 0으로 만드는 게 ArgoCD를 켜기 위한 입장권입니다.</span>
+  </div>
+
+  <div class="quiz">
+    <div class="q-tag">🧠 숲 확인</div>
+    <div class="q">저장소가 클러스터보다 낡은 상태에서 <code>selfHeal: true</code>로 ArgoCD를 켜면?</div>
+    <div class="quiz-opts">
+      <button class="quiz-opt"><span class="mark">A</span><span>ArgoCD가 더 최신인 클러스터 쪽을 감지해서 git을 업데이트해줍니다.</span></button>
+      <button class="quiz-opt" data-correct="true"><span class="mark">B</span><span><b>git이 이깁니다.</b> 클러스터가 낡은 상태로 되돌아가고, 손으로 되돌려도 ArgoCD가 <b>다시 덮습니다.</b></span></button>
+      <button class="quiz-opt"><span class="mark">C</span><span>차이가 있으면 ArgoCD가 멈추고 사람에게 물어봅니다.</span></button>
+    </div>
+    <div class="quiz-explain"><b>핵심:</b> ArgoCD에게 “어느 쪽이 더 최신인가”라는 개념은 <b>없습니다</b>.
+    git이 무조건 정답이라고 가정하고 동작해요. <mark>그래서 GitOps의 진짜 준비 작업은 설치가 아니라
+    “git을 정답으로 만들어두는 일”</mark>입니다. <code>selfHeal</code>이 무서운 건 되돌릴 수 없어서가 아니라,
+    <b>되돌리려는 손을 계속 이기기</b> 때문입니다.</div>
+  </div>
+
+  <ul class="tasklist">
+    <li><input type="checkbox"><span class="label">설정이 사는 <b>네 곳</b>(노트북·GitHub·서버·etcd)을 그림으로 그릴 수 있다</span></li>
+    <li><input type="checkbox"><span class="label"><code>apply</code>가 <b>연결이 아니라 복사</b>라는 걸 설명할 수 있다</span></li>
+    <li><input type="checkbox"><span class="label">클러스터 → 파일로 <b>돌아오는 화살표가 없다</b>는 게 드리프트의 원인임을 안다</span></li>
+    <li><input type="checkbox"><span class="label">지금 이 클러스터에서 <b>드리프트가 큰 앱</b>이 무엇인지 말할 수 있다</span></li>
+  </ul>
+
+
+  <!-- ============================================================
+       앞으로 할 일 — 로드맵
+       ============================================================ -->
+  <h2 id="plan">앞으로 할 일 — 설치 <b>전에</b> 끝내야 하는 것</h2>
+
+  <p>ArgoCD 설치는 30분입니다. <b>드리프트 정리가 GitOps의 90%</b>예요.
+  순서를 지키는 게 전부이고, 각 단계 사이에 <b>게이트</b>가 있습니다 — 게이트를 통과 못 하면 다음으로 안 갑니다.</p>
+
+  <div class="diagram">
+    <pre class="mermaid">
+flowchart TD
+  S0["<b>0단계 ✅ 완료</b><br/>진실 합치기<br/>서버 커밋 push → 노트북 pull"]:::done
+  S1["<b>1단계</b> · 관측<br/>kubectl diff를 손에 익힌다<br/>클러스터는 안 건드림 · 위험 0"]:::safe
+  S2["<b>2단계</b> · 흡수<br/>git을 클러스터에 맞춘다<br/>방향이 중요: 클러스터 → git"]:::work
+  G{"<b>게이트</b><br/>모든 앱 drift = 0?"}:::gate
+  S3["<b>3단계</b> · 설치<br/>아래 0번 섹션부터<br/>수동 sync → apps → base"]:::goal
+  S0 --> S1 --> S2 --> G
+  G -->|"아니오 — 남은 앱 계속"| S2
+  G -->|"예"| S3
+  classDef done fill:#eafaf0,stroke:#28a745
+  classDef safe fill:#eef4ff,stroke:#2d6cdf
+  classDef work fill:#fff7e6,stroke:#e36209
+  classDef gate fill:#f6f2fd,stroke:#6f42c1
+  classDef goal fill:#fdeceb,stroke:#e0413a
+    </pre>
+    <span class="cap"><b>관측 먼저, 개입은 나중.</b> 1단계는 클러스터에 아무것도 쓰지 않습니다 —
+    무서움을 없애는 건 조심하는 마음이 아니라 <b>미리 보는 도구</b>예요.</span>
+  </div>
+
+  <h3>1단계 — 안전벨트부터: <code>kubectl diff</code></h3>
+
+  <p><code>diff</code>는 <b>서버사이드 dry-run</b>입니다. 진짜 API 서버에 “이거 적용하면 뭐가 바뀌냐”만 물어보고
+  <b>아무것도 쓰지 않습니다.</b> 프로덕션에서 공짜로 쓸 수 있는 유일한 안전벨트이고,
+  이 페이지의 위험 경고들도 전부 이 명령 하나로 알아낸 겁니다. 먼저 <b>앱 하나</b>로 감을 잡으세요.</p>
+
+  <div class="code term"><div class="filename">ssh bit-habit<span class="lang">bash</span></div>
+<pre><code>cd ~/workspace/bit-habit-infra
+sudo k3s kubectl diff -R -f apps/startpage/</code></pre></div>
+  <p class="expect"><b>예상:</b> <code>-</code>로 시작하는 줄이 <b>지금 살아있는 값</b>,
+  <code>+</code>가 <b>apply하면 될 값</b>입니다. <code>- image: localhost:5000/startpage:latest</code> /
+  <code>+ image: docker.io/library/startpage:latest</code>가 보이면 제대로 읽은 겁니다.</p>
+
+  <div class="callout warn"><span class="tag">처음 만나면 무조건 당황하는 지점</span>
+    <p><code>kubectl diff</code>는 <b>차이가 있으면 종료 코드 1</b>을 냅니다. 에러가 아니라 <b>설계</b>예요
+    (CI에서 <code>if diff; then ...</code>로 쓰라고). <code>echo $?</code>로 확인해보세요.
+    <b>0 = 완전히 같음</b>, <b>1 = 차이 있음</b>, <b>2 = 진짜 에러</b>.
+    참고로 <code>apps/argocd/</code>는 지금 <b>2</b>가 납니다 — <code>Application</code>이라는 종류를
+    클러스터가 아직 모르니까요. <mark>그게 바로 “아직 설치 안 됨”의 증거</mark>입니다.</p></div>
+
+  <p>감이 왔으면 <b>전체를 한 장으로</b> 봅니다. 아래를 그대로 붙여넣으면 위의 표를 직접 재현합니다 —
+  숫자가 저와 다르면, 그 사이에 클러스터가 또 바뀐 겁니다.</p>
+
+  <div class="code term"><div class="filename">ssh bit-habit — 앱별 드리프트 한 장으로<span class="lang">bash</span></div>
+<pre><code>cd ~/workspace/bit-habit-infra
+for d in apps/*/; do
+  n=$(basename "$d")
+  [ "$n" = "argocd" ] && continue
+  cnt=$(sudo k3s kubectl diff -R -f "$d" 2>&1 | grep -cE '^[+-] ')
+  printf '%-18s %s\n' "$n" "$cnt"
+done</code></pre></div>
+  <p class="expect"><b>예상:</b> 7개는 <code>0</code>, 나머지는 6~18, <code>oauth2-proxy</code>는 110.
+  <b>이 명령이 2단계의 진도표이자 완료 판정기</b>입니다 — 전부 <code>0</code>이 되면 끝입니다.</p>
+
+  <ul class="tasklist">
+    <li><input type="checkbox"><span class="label"><code>kubectl diff</code>가 <b>아무것도 쓰지 않는다</b>는 걸 안다</span></li>
+    <li><input type="checkbox"><span class="label"><code>-</code>가 현재, <code>+</code>가 될 값이라는 걸 읽을 수 있다</span></li>
+    <li><input type="checkbox"><span class="label">종료 코드 <b>1은 에러가 아니다</b>를 안다</span></li>
+    <li><input type="checkbox"><span class="label">앱별 드리프트 표를 <b>내 손으로</b> 뽑아봤다</span></li>
+  </ul>
+
+  <h3>2단계 — 흡수: <b>git을 클러스터에 맞춘다</b></h3>
+
+  <div class="callout learn"><span class="tag">방향이 전부입니다</span>
+    <p>본능적으로는 “저장소가 옳으니 클러스터를 고치자”고 하고 싶습니다. <b>반대로 하세요.</b>
+    지금 <b>돌아가고 있는 쪽이 정답</b>입니다 — 116일간 트래픽을 받아온 증거가 있으니까요.
+    저장소는 그 사실을 <b>받아적는</b> 겁니다. <mark>드리프트 해소 = 클러스터를 git에 맞추는 게 아니라,
+    git에게 현실을 가르치는 일</mark>이에요. 이걸 거꾸로 하면 그게 곧 장애입니다.</p></div>
+
+  <p>앱 하나당 3분입니다. <code>startpage</code>로 예를 들면 — 먼저 <b>살아있는 진짜 값</b>을 물어봅니다.</p>
+
+  <div class="code term"><div class="filename">ssh bit-habit — 클러스터에게 정답을 묻는다<span class="lang">bash</span></div>
+<pre><code>sudo k3s kubectl get deploy startpage \
+  -o jsonpath='{.spec.template.spec.containers[0].image}{"\n"}{.spec.template.spec.containers[0].imagePullPolicy}{"\n"}'</code></pre></div>
+  <p class="expect"><b>예상:</b> <code>localhost:5000/startpage:latest</code> 와 <code>IfNotPresent</code>.
+  이 두 값을 <code>apps/startpage/deployment.yaml</code>에 <b>그대로 받아적습니다.</b></p>
+
+  <div class="callout note"><span class="tag">어디서 파일을 고칠까 — 서버가 아니라 노트북에서</span>
+    <p>서버에서 고치면 <b>오늘 아침의 그 문제</b>가 반복됩니다 — 푸시 안 된 커밋이 서버에만 쌓이는 것.
+    <b>노트북에서 고치고 → push → 서버에서 pull</b> 하세요. 이게 “git이 정답”을 몸으로 연습하는 과정이고,
+    ArgoCD를 켠 뒤에는 <b>강제되는</b> 흐름이기도 합니다. 미리 그 습관을 만드는 셈이에요.</p></div>
+
+  <div class="code term"><div class="filename">내 노트북 — 고치고 올린다<span class="lang">bash</span></div>
+<pre><code>cd ~/workspace/bit-habit-infra
+# apps/startpage/deployment.yaml 을 편집: image / imagePullPolicy 를 위 값으로
+git add apps/startpage/deployment.yaml
+git commit -m "fix(startpage): record the live image ref (local registry)"
+git push</code></pre></div>
+
+  <div class="code term"><div class="filename">ssh bit-habit — 받아서 0이 됐는지 확인<span class="lang">bash</span></div>
+<pre><code>cd ~/workspace/bit-habit-infra && git pull
+sudo k3s kubectl diff -R -f apps/startpage/ ; echo "exit=$?"</code></pre></div>
+  <p class="expect"><b>예상:</b> 출력이 <b>비어 있고</b> <code>exit=0</code>.
+  <mark>이 순간 <code>startpage</code>는 GitOps 준비가 끝난 앱</mark>입니다. 나머지도 똑같이 반복하세요.</p>
+
+  <div class="callout warn"><span class="tag">특별 취급이 필요한 3개</span>
+    <p><b>bithabit-api</b> — 이미지뿐 아니라 <b>포트와 Endpoints</b>가 다릅니다. 손으로 쓴 <code>Endpoints</code>는
+    Pod로 옮겨간 지금 <b>필요 없습니다</b>. Service에 제대로 된 <code>selector</code>를 주고 Endpoints 블록을 지우는 게 맞습니다 —
+    가장 신중하게, <b>마지막에</b> 하세요.<br>
+    <b>oauth2-proxy</b> — 클러스터에 아예 없습니다. “쓸 건가?”를 먼저 결정하고, 안 쓸 거면
+    <code>apps/</code>에서 빼거나 <code>.disabled</code>로 두세요. <b>안 쓰는 매니페스트가 저장소에 있으면 ArgoCD가 그걸 만듭니다.</b><br>
+    <b>base/ingress.yaml</b> — TLS 호스트 목록에서 <code>www.blog</code>·<code>www.wiki</code>가 빠집니다.
+    와일드카드 <code>*.bit-habit.com</code>은 <b>3단계 하위도메인을 안 덮으므로</b> 이 둘은 인증서를 잃습니다. 되살려 두세요.</p></div>
+
+  <h3>게이트 — 여기를 통과해야 3단계</h3>
+
+  <ul class="tasklist">
+    <li><input type="checkbox"><span class="label">1단계의 <b>for 루프가 전부 <code>0</code></b>을 출력한다</span></li>
+    <li><input type="checkbox"><span class="label"><code>base/</code>도 drift 0이다 (<code>www.blog</code>·<code>www.wiki</code> 포함)</span></li>
+    <li><input type="checkbox"><span class="label"><code>oauth2-proxy</code>를 <b>쓸지 말지</b> 결정했다</span></li>
+    <li><input type="checkbox"><span class="label">아래 <a href="#plan"><b>멈춤 신호</b></a>를 읽고, 숫자를 내 상황에 맞게 고쳤다</span></li>
+  </ul>
+
+  <h3>멈춤 신호 — 무엇을 보면 즉시 되돌리나</h3>
+
+  <div class="callout why"><span class="tag">왜 <b>미리</b> 적어두나</span>
+    <p>사이트가 내려간 뒤에 “이거 되돌려야 하나?”를 판단하면 늦습니다. 그 순간이 <b>판단력이 가장 나쁜 순간</b>이에요 —
+    아드레날린이 돌고, 방금 자기가 한 일이라 인정하기 싫고, “조금만 더 보면 될 것 같은데”가 계속 이깁니다.
+    <mark>멈춤 신호는 지금의 침착한 내가, 나중의 당황한 나에게 내리는 명령</mark>입니다.
+    그래서 <b>숫자와 명령어로</b> 적습니다 — “상황 봐서”는 신호가 아닙니다.</p></div>
+
+  <p>이 클러스터는 <b>폭발 반경이 세 층</b>으로 나뉩니다. 오늘 실제로 확인한 구조예요 —
+  층마다 신호도 다르고 대응도 다릅니다.</p>
+
+  <table class="plain">
+    <tr><th>층</th><th>멈춤 신호</th><th>대응</th></tr>
+    <tr><td><b>1층</b> · 앱 하나<br><span style="color:#5b6570">나머지 19개는 멀쩡</span></td>
+        <td>Sync 후 <b>5분</b> 안에 해당 Pod이 <code>Running 1/1</code>로 안 돌아옴<br>
+        (<code>ErrImageNeverPull</code> / <code>CrashLoopBackOff</code>)</td>
+        <td>당황하지 말 것. <b>그 앱만</b> <code>rollout undo</code>.<br>ArgoCD는 켜둔 채로 원인부터 읽기.</td></tr>
+    <tr><td><b>2층</b> · 앱 여러 개<br><span style="color:#5b6570">한 번의 sync가 여러 개를 건드림</span></td>
+        <td>Ready 미달 Deployment가 <b>2개 이상</b> 동시에</td>
+        <td><b>비상 브레이크 먼저</b> — 자동 동기화를 떼어낸다.<br>ArgoCD의 손을 묶어야 되돌리기가 먹힙니다.</td></tr>
+    <tr><td><b>3층</b> · 게이트<br><span style="color:#e0413a">전부 동시에 죽음</span></td>
+        <td><code>bit-habit.com</code>이 <b>200이 아님</b> · 인증서 경고 ·<br>
+        <code>base/ingress.yaml</code>을 건드린 직후 아무 사이트도 안 열림</td>
+        <td><b>즉시.</b> 30초도 보지 말 것.<br>브레이크 → <code>git revert</code> → 손으로 apply.</td></tr>
+  </table>
+
+  <div class="callout danger"><span class="tag">3층이 특별한 이유</span>
+    <p>앱 하나가 죽으면 사이트 하나가 죽습니다. 그런데 <code>base/ingress.yaml</code>은 <b>모든 호스트명의 라우팅 표</b>라
+    잘못되면 <b>20개가 동시에</b> 내려갑니다. 게다가 인증서까지 얽혀 있어서 복구가 “Pod 하나 살리기”보다 훨씬 깁니다.
+    <mark>그래서 이 파일은 이 페이지의 <b>맨 마지막</b>(7번)에, 그것도 <code>selfHeal: false</code>로만 건드립니다.</mark></p></div>
+
+  <h4 style="margin:26px 0 6px;font-size:.98rem">신호를 실제로 읽는 명령 (검증됨)</h4>
+
+  <div class="code term"><div class="filename">ssh bit-habit — 1·2층: Ready 미달 Deployment만<span class="lang">bash</span></div>
+<pre><code>sudo k3s kubectl get deploy -A --no-headers |
+  awk '{split($3,a,"/"); if (a[1]!=a[2]) print $1"/"$2, $3}'</code></pre></div>
+  <p class="expect"><b>예상:</b> <b>아무것도 안 나오면 정상.</b> 한 줄 = 1층, 두 줄 이상 = <b>2층, 브레이크</b>.</p>
+
+  <div class="callout warn"><span class="tag">쓰면 안 되는 명령 — 실제로 속았습니다</span>
+    <p>이걸 쓰고 싶어집니다: <code>kubectl get pods -A --field-selector=status.phase!=Running</code>.
+    이 클러스터에서 실행하면 <b>9줄이 쏟아집니다</b> — 그런데 전부 <code>Completed</code>, 즉 배포하며 교체된
+    <b>옛날 Pod의 시체</b>예요. 아무 문제도 없는데 문제처럼 보입니다.
+    <mark>비상시에 늑대소년을 내는 지표는 지표가 아니라 소음</mark>입니다.
+    그래서 “Pod이 Running이냐”가 아니라 <b>“Deployment가 원하는 개수만큼 Ready냐”</b>를 봅니다 — 위의 awk가 그겁니다.</p></div>
+
+  <div class="code term"><div class="filename">ssh bit-habit — 3층: 게이트가 살아있나<span class="lang">bash</span></div>
+<pre><code>for h in bit-habit.com habit.bit-habit.com blog.bit-habit.com wiki.bit-habit.com status.bit-habit.com; do
+  printf '%-26s %s\n' "$h" "$(curl -s -o /dev/null -m 8 -w '%{http_code}' https://$h)"
+done</code></pre></div>
+  <p class="expect"><b>예상:</b> 전부 <code>200</code>. <b>하나라도 <code>000</code>(연결 실패)이나 <code>5xx</code>면 3층입니다.</b>
+  <code>000</code>은 TLS 실패도 포함하니 인증서 사고까지 같이 잡힙니다.</p>
+
+  <h4 style="margin:26px 0 6px;font-size:.98rem">비상 브레이크 — 되돌리기 <b>전에</b> 치는 명령</h4>
+
+  <div class="callout learn"><span class="tag">순서가 반대면 아무것도 안 먹힙니다</span>
+    <p><code>selfHeal: true</code>가 켜진 상태에서 <code>rollout undo</code>를 치면, ArgoCD가 <b>몇 초 안에 다시 덮습니다.</b>
+    되돌려도 되돌려도 원위치로 가는 지옥이 여기서 나와요. <mark>그러니 <b>항상 브레이크 먼저, 복구는 그 다음</b></mark>입니다.</p></div>
+
+  <div class="code term"><div class="filename">ssh bit-habit — ① ArgoCD의 손을 묶는다<span class="lang">bash</span></div>
+<pre><code># 자동 동기화(selfHeal 포함)만 떼어낸다. 앱은 그대로 돌아감.
+sudo k3s kubectl -n argocd patch application bit-habit-apps \
+  --type merge -p '{"spec":{"syncPolicy":null}}'</code></pre></div>
+
+  <div class="code term"><div class="filename">ssh bit-habit — ② 그 다음에 복구<span class="lang">bash</span></div>
+<pre><code>sudo k3s kubectl rollout undo deploy/&lt;앱이름&gt;      # 1층: 그 앱만
+sudo k3s kubectl rollout status deploy/&lt;앱이름&gt;    # 돌아왔는지 확인</code></pre></div>
+
+  <div class="callout warn"><span class="tag">이 두 명령만은 아직 검증 못 했습니다</span>
+    <p>이 페이지의 다른 명령은 전부 이 클러스터에서 실행해 출력을 확인한 것입니다. 그런데 위 <code>patch</code>는
+    <b>ArgoCD가 아직 설치돼 있지 않아</b> 지금은 돌려볼 수가 없습니다.
+    <mark>설치 직후, 아직 아무것도 망가지지 않았을 때 <b>연습으로 한 번</b> 쳐보세요</mark> —
+    비상 브레이크를 비상시에 처음 밟아보는 건 최악의 순서입니다.
+    (되돌리려면 <code>application.yaml</code>을 다시 apply하면 <code>syncPolicy</code>가 살아납니다.)</p></div>
+
+  <div class="callout note"><span class="tag">시간 예산 — “조금만 더”를 이기는 장치</span>
+    <p><b>5분.</b> Sync를 누르고 5분 안에 위 신호가 정상으로 안 돌아오면, <b>원인을 모르는 채로</b> 되돌립니다.
+    원인 분석은 되돌린 <b>뒤에</b> 해도 됩니다 — 되돌린 상태는 안전하고, 로그는 도망가지 않아요.
+    <mark>디버깅과 복구를 동시에 하려는 게 대부분의 장애를 길게 만듭니다.</mark></p></div>
+
+  <div class="callout good"><span class="tag">이 목록은 <b>당신 것</b>입니다</span>
+    <p>위 숫자(5분, 2개, 200)는 오늘 이 클러스터의 구조에서 뽑은 <b>초안</b>입니다.
+    운영하면서 “이건 너무 예민했다” / “이건 너무 늦었다”가 반드시 나옵니다 —
+    그때 이 표를 <b>고치세요.</b> 멈춤 신호는 한 번 쓰고 마는 문서가 아니라
+    <b>장애를 겪을 때마다 한 줄씩 자라는</b> 문서입니다. 그게 현업에서 말하는 포스트모템의 실체예요.</p></div>
+
+  <ul class="tasklist">
+    <li><input type="checkbox"><span class="label">폭발 반경 <b>세 층</b>과 층별 대응이 다르다는 걸 안다</span></li>
+    <li><input type="checkbox"><span class="label"><b>브레이크 먼저, 복구는 그 다음</b> 순서를 안다</span></li>
+    <li><input type="checkbox"><span class="label">Pod의 <code>Running</code>이 아니라 <b>Deployment의 Ready</b>를 봐야 하는 이유를 안다</span></li>
+    <li><input type="checkbox"><span class="label">설치 직후 <b>브레이크를 연습으로</b> 한 번 밟아봤다</span></li>
+  </ul>
+
+  <h3>3단계 — 그때 아래로 내려가세요</h3>
+  <p>게이트를 통과했다면 <code>git</code>이 진짜로 정답이 된 상태입니다. 그때부터 ArgoCD는
+  <b>되돌리는 기계</b>가 아니라 <b>지켜주는 기계</b>가 됩니다. 아래 <a href="#why">0번</a>부터 시작하세요.</p>
 
 
   <!-- ============================================================
@@ -800,6 +1159,9 @@ sudo k3s kubectl delete namespace argocd</code></pre></div>
   <h2 id="recap">9. 마무리 · 이해도 체크</h2>
   <p>명령이 아니라 <b>머릿속에 남았는지</b>를 확인하세요. 다 채우면 이 페이지가 100%가 됩니다. 🎉</p>
   <ul class="tasklist">
+    <li><input type="checkbox"><span class="label">설정이 <b>여러 사본</b>으로 존재한다는 걸 그림으로 설명할 수 있다</span></li>
+    <li><input type="checkbox"><span class="label"><b>설치 전에 드리프트를 0으로</b> 만들어야 하는 이유를 안다</span></li>
+    <li><input type="checkbox"><span class="label"><code>kubectl diff</code>를 습관처럼 먼저 친다</span></li>
     <li><input type="checkbox"><span class="label"><b>push와 pull</b>의 차이를 한 문장으로 설명할 수 있다</span></li>
     <li><input type="checkbox"><span class="label"><b>드리프트</b>가 무엇이고 왜 조용한지 설명할 수 있다</span></li>
     <li><input type="checkbox"><span class="label"><code>Application</code>이 <b>매핑</b>이라는 걸 설명할 수 있다</span></li>
@@ -861,7 +1223,9 @@ sudo k3s kubectl delete namespace argocd</code></pre></div>
   });
 
   // ---- 체크리스트: localStorage에 저장, 진행 바 연동 ----
-  var KEY = 'argocd-tutorial-progress';
+  // v2: 앞에 "숲"·"할 일" 섹션이 들어오면서 체크박스 인덱스가 밀렸습니다.
+  // 키를 바꿔 예전에 저장된 진행 상황이 엉뚱한 항목에 붙는 걸 막습니다.
+  var KEY = 'argocd-tutorial-progress-v2';
   var boxes = Array.prototype.slice.call(document.querySelectorAll('ul.tasklist input[type=checkbox]'));
   var state = {};
   try { state = JSON.parse(localStorage.getItem(KEY) || '{}'); } catch (e) { state = {}; }
