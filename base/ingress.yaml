@@ -5,9 +5,16 @@
 # in-cluster Service.  Traefik (bundled with k3s) reads these rules and
 # forwards HTTPS traffic accordingly.
 #
-# TLS is handled automatically by cert-manager via the ClusterIssuer
-# "letsencrypt-prod".  The wildcard cert (*.bit-habit.com) is stored in
-# the Secret named "tls-secret".
+# TLS certificates are provisioned by the explicit Certificate resource in
+# base/cert-manager/certificate.yaml (cert-manager + ClusterIssuer
+# "letsencrypt-prod"). The cert is stored in the Secret named "tls-secret"
+# and referenced via spec.tls.secretName below.
+#
+# IMPORTANT: do NOT add a `cert-manager.io/cluster-issuer` annotation here.
+# That annotation makes cert-manager's ingress-shim auto-create a SECOND
+# Certificate (named after the secret, "tls-secret") that fights the explicit
+# one above for the same Secret, leaving one stuck Ready=False
+# (reason: IncorrectCertificate). Manage the cert only via certificate.yaml.
 # =============================================================================
 
 apiVersion: networking.k8s.io/v1
@@ -19,7 +26,8 @@ metadata:
     kubernetes.io/ingress.class: traefik # Use Traefik as the ingress controller
     traefik.ingress.kubernetes.io/router.entrypoints: websecure # Accept HTTPS traffic only (port 443)
     traefik.ingress.kubernetes.io/router.tls: "true" # Enable TLS termination at Traefik
-    cert-manager.io/cluster-issuer: letsencrypt-prod # Auto-provision TLS certs via Let's Encrypt
+    # NOTE: cert-manager.io/cluster-issuer intentionally omitted — see header comment.
+    # The TLS cert is owned by the explicit Certificate in base/cert-manager/certificate.yaml.
 spec:
   tls:
     - hosts:

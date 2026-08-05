@@ -21,4 +21,8 @@ spec:
   commonName: "bit-habit.com"
   dnsNames:
     - "bit-habit.com" # Apex domain
-    - "*.bit-habit.com" # All subdomains (blog, wiki, booktoss, etc.)
+    - "*.bit-habit.com" # All single-level subdomains (blog, wiki, booktoss, etc.)
+    # NOTE: a single-level wildcard does NOT cover two-level names such as
+    # www.blog.* or www.wiki.*, so those are listed explicitly below.
+    - "www.blog.bit-habit.com" # Ghost blog www alias (rule in base/ingress.yaml)
+    - "www.wiki.bit-habit.com" # Wiki.js www alias (rule in base/ingress.yaml)
